@@ -1,9 +1,5 @@
-import HairAIAutomation from "@/components/HairAIAutomation";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white">
-      <HairAIAutomation />
-    </main>
-  );
+export default function Root() {
+  redirect("/splash");
 }

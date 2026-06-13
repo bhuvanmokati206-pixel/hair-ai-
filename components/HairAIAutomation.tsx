@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import CameraCapture, { CapturedPhoto } from "./CameraCapture";
 import AnalysisCard from "./AnalysisCard";
 import StyleGrid from "./StyleGrid";
@@ -27,7 +28,13 @@ export type GeneratedStyle = {
 
 type Step = "capture" | "analyzing" | "results";
 
-export default function HairAIAutomation() {
+type Props = {
+  customerName?: string;
+  onAnalysisComplete?: (analysis: HairAnalysis, photos: CapturedPhoto[]) => void;
+  onReset?: () => void;
+};
+
+export default function HairAIAutomation({ customerName, onAnalysisComplete, onReset }: Props) {
   const [step, setStep] = useState<Step>("capture");
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [analysis, setAnalysis] = useState<HairAnalysis | null>(null);
@@ -66,11 +73,12 @@ export default function HairAIAutomation() {
         }))
       );
       setStep("results");
+      onAnalysisComplete?.(result, capturedPhotos);
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : "Unknown error");
       setStep("capture");
     }
-  }, []);
+  }, [onAnalysisComplete]);
 
   const generateStyleImage = useCallback(
     async (index: number) => {
@@ -122,14 +130,16 @@ export default function HairAIAutomation() {
     setAnalysis(null);
     setGeneratedStyles([]);
     setAnalyzeError(null);
+    onReset?.();
   };
 
-  // ── CAPTURE STEP ────────────────────────────────────────────────
+  // ── CAPTURE STEP ─────────────────────────────────────────────────
   if (step === "capture") {
     return (
       <>
         {analyzeError && (
-          <div className="fixed top-0 left-0 right-0 z-50 bg-red-600 text-white text-sm text-center py-3 px-4">
+          <div className="fixed top-0 left-0 right-0 z-50 text-white text-sm text-center py-3 px-4"
+            style={{ background: "var(--danger)" }}>
             {analyzeError} — please try again
           </div>
         )}
@@ -138,44 +148,55 @@ export default function HairAIAutomation() {
     );
   }
 
-  // ── ANALYZING STEP ──────────────────────────────────────────────
+  // ── ANALYZING STEP ───────────────────────────────────────────────
   if (step === "analyzing") {
     return (
-      <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center px-6 gap-8">
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 gap-8"
+        style={{ background: "var(--bg)" }}>
         {/* Spinner */}
         <div className="relative w-24 h-24">
-          <div className="absolute inset-0 rounded-full"
-            style={{ border: "3px solid #f9731622" }} />
-          <div className="absolute inset-0 rounded-full animate-spin"
-            style={{ border: "3px solid transparent", borderTopColor: "#f97316" }} />
-          <div className="absolute inset-3 rounded-full animate-spin"
-            style={{ border: "3px solid transparent", borderTopColor: "#facc15", animationDirection: "reverse", animationDuration: "0.8s" }} />
+          <div className="absolute inset-0 rounded-full" style={{ border: "3px solid var(--accent-light)" }} />
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{ border: "3px solid transparent", borderTopColor: "var(--accent)" }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
           <div className="absolute inset-0 flex items-center justify-center text-2xl">✂️</div>
         </div>
 
         <div className="text-center">
-          <h2 className="text-white font-black text-2xl mb-2">Analysing Hair</h2>
-          <p className="text-gray-400 text-sm">
-            Claude AI is examining {photos.length} photo{photos.length > 1 ? "s" : ""}…
+          <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
+            Analysing{customerName ? ` ${customerName}'s` : ""} hair
+          </h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            AI is examining {photos.length} photo{photos.length > 1 ? "s" : ""}
           </p>
         </div>
 
         {/* Photo row */}
         <div className="flex gap-3">
           {photos.map((p, i) => (
-            <div key={i} className="w-16 h-16 rounded-xl overflow-hidden border-2 border-gray-700">
+            <div key={i} className="w-16 h-16 rounded-xl overflow-hidden"
+              style={{ border: "2px solid var(--border)" }}>
               <img src={p.preview} alt={p.label} className="w-full h-full object-cover" />
             </div>
           ))}
         </div>
 
         <div className="flex flex-col gap-2 text-center">
-          {["Detecting face shape…", "Measuring hair length…", "Checking hair density…", "Finding best styles…"].map(
+          {["Detecting face shape…", "Measuring hair length…", "Checking density…", "Finding best styles…"].map(
             (msg, i) => (
-              <p key={i} className="text-xs text-gray-600 animate-pulse"
-                style={{ animationDelay: `${i * 0.4}s` }}>
+              <motion.p
+                key={i}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0.5] }}
+                transition={{ delay: i * 0.6, duration: 1.2, repeat: Infinity }}
+                className="text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
                 {msg}
-              </p>
+              </motion.p>
             )
           )}
         </div>
@@ -183,33 +204,34 @@ export default function HairAIAutomation() {
     );
   }
 
-  // ── RESULTS STEP ────────────────────────────────────────────────
-  const frontPreview = photos.find((p) => p.label === "front") ?? photos[0];
-
+  // ── RESULTS STEP ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0d0d0d] pb-16">
-      {/* Results header */}
-      <div className="px-4 pt-10 pb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h1 className="gradient-text font-black text-2xl">Hair Analysis</h1>
+    <div className="min-h-screen pb-16" style={{ background: "var(--bg)" }}>
+      {/* Header */}
+      <div className="px-5 pt-12 pb-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold gradient-text">Hair Analysis</h1>
+            {customerName && (
+              <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>For {customerName}</p>
+            )}
+          </div>
           <button
             onClick={reset}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 border border-gray-700 active:scale-95"
+            className="px-4 py-2 rounded-xl text-xs font-semibold"
+            style={{ background: "var(--bg-subtle)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
           >
-            New Customer
+            New scan
           </button>
         </div>
-        <p className="text-gray-500 text-sm">
-          Analysed from {photos.length} angle{photos.length > 1 ? "s" : ""}
-        </p>
       </div>
 
       {/* Photo strip */}
-      <div className="px-4 mb-5">
+      <div className="px-5 mb-5">
         <div className="flex gap-2">
           {photos.map((p, i) => (
-            <div key={i} className={`overflow-hidden rounded-xl border ${i === 0 ? "flex-[2]" : "flex-1"}`}
-              style={{ borderColor: "#ffffff20" }}>
+            <div key={i} className={`overflow-hidden rounded-xl ${i === 0 ? "flex-[2]" : "flex-1"}`}
+              style={{ border: "1px solid var(--border)" }}>
               <img src={p.preview} alt={p.label}
                 className={`w-full object-cover ${i === 0 ? "aspect-[3/4]" : "aspect-square"}`} />
             </div>
@@ -217,7 +239,6 @@ export default function HairAIAutomation() {
         </div>
       </div>
 
-      {/* Analysis */}
       {analysis && (
         <>
           <AnalysisCard analysis={analysis} />
@@ -230,13 +251,9 @@ export default function HairAIAutomation() {
         </>
       )}
 
-      {/* Bottom CTA */}
-      <div className="px-4 mt-8">
-        <button
-          onClick={reset}
-          className="w-full py-4 rounded-2xl font-bold text-gray-400 border border-gray-700 active:scale-95 transition-transform text-sm"
-        >
-          ↩ Start New Customer
+      <div className="px-5 mt-8">
+        <button onClick={reset} className="btn-ghost">
+          ↩ Start new customer
         </button>
       </div>
     </div>

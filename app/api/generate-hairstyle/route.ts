@@ -1,61 +1,44 @@
-import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageBase64, styleName, hairColor, hairTexture } = await req.json();
+    const { styleName, hairColor, hairTexture, includeBeard } = await req.json();
 
-    if (!imageBase64 || !styleName) {
-      return NextResponse.json({ error: "Missing image or style name" }, { status: 400 });
+    if (!styleName) {
+      return NextResponse.json({ error: "Missing style name" }, { status: 400 });
     }
 
-    const prompt = `This is a reference photo of a real person. Generate a photorealistic portrait of the EXACT same person with ONLY the hairstyle changed to: ${styleName}.
+    // Build a detailed prompt for Pollinations.ai (completely free, no key needed)
+    const beardPart = includeBeard ? "with a well-groomed beard, " : "";
+    const prompt = [
+      "professional studio portrait photo of a man",
+      `${styleName} hairstyle`,
+      `${hairColor} hair`,
+      `${hairTexture} hair texture`,
+      beardPart,
+      "photorealistic, high quality, sharp focus, neutral background",
+      "front-facing portrait, natural lighting",
+    ].filter(Boolean).join(", ");
 
-Rules:
-- Keep the IDENTICAL face shape, skin tone, eyes, nose, lips, and all facial features
-- Only change the hair to: ${styleName}
-- Hair color: ${hairColor}
-- Hair texture: ${hairTexture}
-- Keep the same mustache/beard if present
-- Professional studio lighting, sharp focus, front-facing portrait
-- Do NOT change anything except the hairstyle`;
+    const encoded = encodeURIComponent(prompt);
+    const seed = Math.floor(Math.random() * 999999);
+    const pollinationsUrl =
+      `https://image.pollinations.ai/prompt/${encoded}?width=512&height=640&nologo=true&seed=${seed}`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-preview-image-generation",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-            { text: prompt },
-          ],
-        },
-      ],
-      config: {
-        responseModalities: ["image", "text"],
-        temperature: 0.4,
-      },
-    });
+    // Fetch the image from Pollinations and convert to base64 data URL
+    const imgRes = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(30000) });
 
-    // Extract the generated image from the response
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find((p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData?.data);
-
-    if (!imagePart?.inlineData?.data) {
-      // Gemini may decline image generation for certain prompts
-      const textPart = parts.find((p: { text?: string }) => p.text);
-      console.error("No image in response:", textPart?.text);
+    if (!imgRes.ok) {
       return NextResponse.json(
-        { error: "Image generation was blocked or failed. Try a different style." },
+        { error: "Image generation failed. Please try again." },
         { status: 422 }
       );
     }
 
-    const base64Image = imagePart.inlineData.data;
-    const mimeType = imagePart.inlineData.mimeType ?? "image/png";
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    const buffer = await imgRes.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const mimeType = imgRes.headers.get("content-type") ?? "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return NextResponse.json({ imageUrl: dataUrl });
   } catch (err) {
