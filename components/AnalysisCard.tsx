@@ -33,6 +33,24 @@ function StatBubble({ icon, label, value, color }: {
 export default function AnalysisCard({ analysis }: Props) {
   return (
     <div className="space-y-4 px-4">
+      {/* Detected gender + skin tone badges */}
+      {(analysis.gender || analysis.skinTone) && (
+        <div className="flex justify-center gap-2 flex-wrap">
+          {analysis.gender && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full capitalize"
+              style={{ background: "#ffffff10", border: "1.5px solid #ffffff20", color: "#fff" }}>
+              {analysis.gender === "female" ? "👩 Female" : "👨 Male"} styles
+            </span>
+          )}
+          {analysis.skinTone && (
+            <span className="text-xs font-bold px-3 py-1 rounded-full capitalize"
+              style={{ background: "#ffffff10", border: "1.5px solid #ffffff20", color: "#fff" }}>
+              🎨 {analysis.skinTone}{analysis.undertone ? ` · ${analysis.undertone}` : ""} tone
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Hair stats row */}
       <div className="flex gap-2">
         <StatBubble icon="📏" label="Length"  value={analysis.hairLength}  color={statColors[0]} />
@@ -64,6 +82,27 @@ export default function AnalysisCard({ analysis }: Props) {
         <p className="text-white font-black text-2xl mb-2 capitalize">{analysis.bestMatch}</p>
         <p className="text-gray-300 text-sm leading-relaxed">{analysis.bestMatchReason}</p>
       </div>
+
+      {/* Suggested colours */}
+      {analysis.suggestedColors && analysis.suggestedColors.length > 0 && (
+        <div className="rounded-2xl p-4"
+          style={{ background: "#a855f710", border: "1.5px solid #a855f733" }}>
+          <p className="font-bold text-sm mb-3 flex items-center gap-2" style={{ color: "#c084fc" }}>
+            <span>🎨</span> Recommended Colours
+          </p>
+          <div className="space-y-2.5">
+            {analysis.suggestedColors.map((c, i) => (
+              <div key={i} className="flex gap-2.5">
+                <span className="text-sm" style={{ color: "#c084fc" }}>•</span>
+                <div>
+                  <p className="text-white text-sm font-semibold capitalize">{c.color}</p>
+                  <p className="text-gray-400 text-xs leading-relaxed">{c.reason}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Styling tips */}
       <div className="rounded-2xl p-4"

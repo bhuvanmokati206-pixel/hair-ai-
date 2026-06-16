@@ -39,8 +39,8 @@ export default function CustomisePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: frontPhoto.base64,
           styleName: style.styleName,
+          gender: currentSession.analysis.gender,
           hairColor: currentSession.analysis.hairColor,
           hairTexture: currentSession.analysis.hairTexture,
           includeBeard: mode === "beard",

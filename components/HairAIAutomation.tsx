@@ -6,7 +6,12 @@ import CameraCapture, { CapturedPhoto } from "./CameraCapture";
 import AnalysisCard from "./AnalysisCard";
 import StyleGrid from "./StyleGrid";
 
+export type SuggestedColor = { color: string; reason: string };
+
 export type HairAnalysis = {
+  gender?: string;
+  skinTone?: string;
+  undertone?: string;
   hairLength: string;
   hairDensity: string;
   hairTexture: string;
@@ -16,6 +21,7 @@ export type HairAnalysis = {
   feasibleStyles: string[];
   bestMatch: string;
   bestMatchReason: string;
+  suggestedColors?: SuggestedColor[];
   stylingTips: string;
 };
 
@@ -96,8 +102,8 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            imageBase64: frontPhoto.base64,
             styleName: style.styleName,
+            gender: analysis.gender,
             hairColor: analysis.hairColor,
             hairTexture: analysis.hairTexture,
           }),
