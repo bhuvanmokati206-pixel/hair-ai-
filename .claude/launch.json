@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hair-ai",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "hair-ai-https",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:https"],
+      "port": 3000
+    }
+  ]
+}

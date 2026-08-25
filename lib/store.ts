@@ -5,6 +5,10 @@ import { HairAnalysis } from "@/components/HairAIAutomation";
 type CurrentCustomer = {
   name: string;
   phone: string;
+  gender?: "male" | "female" | "other";
+  acceptedTerms?: boolean;
+  /** customers.id once the row exists in Supabase. */
+  id?: string;
 };
 
 type Session = {
@@ -33,6 +37,14 @@ type Store = {
   setCurrentSession: (s: Session | null) => void;
   updateSessionAnalysis: (analysis: HairAnalysis, photos: CapturedPhoto[]) => void;
   addSavedStyle: (styleName: string, imageUrl: string) => void;
+
+  /** visits.id for the visit in progress — photos and checkout hang off this. */
+  currentVisitId: string | null;
+  setCurrentVisitId: (id: string | null) => void;
+
+  /** barbers.id chosen for the current scan — attributed on the visit. */
+  currentBarberId: string | null;
+  setCurrentBarberId: (id: string | null) => void;
 };
 
 export const useStore = create<Store>((set) => ({
@@ -41,6 +53,12 @@ export const useStore = create<Store>((set) => ({
 
   currentCustomer: null,
   setCurrentCustomer: (currentCustomer) => set({ currentCustomer }),
+
+  currentVisitId: null,
+  setCurrentVisitId: (currentVisitId) => set({ currentVisitId }),
+
+  currentBarberId: null,
+  setCurrentBarberId: (currentBarberId) => set({ currentBarberId }),
 
   currentSession: null,
   setCurrentSession: (currentSession) => set({ currentSession }),

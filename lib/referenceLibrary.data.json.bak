@@ -1,0 +1,1322 @@
+[
+  {
+    "id": "M-SH-008",
+    "name": "Classic Wave & Part",
+    "length": "short",
+    "gender": "men",
+    "slug": "classic-wave-and-part",
+    "image": "/aura-hairstyles/reference/men/short/classic-wave-and-part/M-SH-008_classic-wave-and-part.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/classic-wave-and-part/M-SH-008_classic-wave-and-part.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-009",
+    "name": "Texturized Forward Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "texturized-forward-crop",
+    "image": "/aura-hairstyles/reference/men/short/texturized-forward-crop/M-SH-009_texturized-forward-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/texturized-forward-crop/M-SH-009_texturized-forward-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-011",
+    "name": "Textured Quiff High Skin Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-quiff-high-skin-fade",
+    "image": "/aura-hairstyles/reference/men/short/textured-quiff-high-skin-fade/M-SH-011_textured-quiff-high-skin-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-quiff-high-skin-fade/M-SH-011_textured-quiff-high-skin-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-012",
+    "name": "Brush Up Low Taper Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "brush-up-low-taper-fade",
+    "image": "/aura-hairstyles/reference/men/short/brush-up-low-taper-fade/M-SH-012_brush-up-low-taper-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/brush-up-low-taper-fade/M-SH-012_brush-up-low-taper-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-013",
+    "name": "Burst Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "burst-fade",
+    "image": "/aura-hairstyles/reference/men/short/burst-fade/M-SH-013_burst-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/burst-fade/M-SH-013_burst-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-014",
+    "name": "Business Scissor Cut",
+    "length": "short",
+    "gender": "men",
+    "slug": "business-scissor-cut",
+    "image": "/aura-hairstyles/reference/men/short/business-scissor-cut/M-SH-014_business-scissor-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/business-scissor-cut/M-SH-014_business-scissor-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-016",
+    "name": "Low Taper Fade Wavy",
+    "length": "short",
+    "gender": "men",
+    "slug": "low-taper-fade-wavy",
+    "image": "/aura-hairstyles/reference/men/short/low-taper-fade-wavy/M-SH-016_low-taper-fade-wavy.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/low-taper-fade-wavy/M-SH-016_low-taper-fade-wavy.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-018",
+    "name": "Curly Taper Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "curly-taper-fade",
+    "image": "/aura-hairstyles/reference/men/short/curly-taper-fade/M-SH-018_curly-taper-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/curly-taper-fade/M-SH-018_curly-taper-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-019",
+    "name": "Faux Hawk",
+    "length": "short",
+    "gender": "men",
+    "slug": "faux-hawk",
+    "image": "/aura-hairstyles/reference/men/short/faux-hawk/M-SH-019_faux-hawk.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/faux-hawk/M-SH-019_faux-hawk.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-020",
+    "name": "Fade Haircut",
+    "length": "short",
+    "gender": "men",
+    "slug": "fade-haircut",
+    "image": "/aura-hairstyles/reference/men/short/fade-haircut/M-SH-020_fade-haircut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/fade-haircut/M-SH-020_fade-haircut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-021",
+    "name": "Textured Crop Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-crop-fade",
+    "image": "/aura-hairstyles/reference/men/short/textured-crop-fade/M-SH-021_textured-crop-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-crop-fade/M-SH-021_textured-crop-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-022",
+    "name": "High and Tight",
+    "length": "short",
+    "gender": "men",
+    "slug": "high-and-tight",
+    "image": "/aura-hairstyles/reference/men/short/high-and-tight/M-SH-022_high-and-tight.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/high-and-tight/M-SH-022_high-and-tight.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-023",
+    "name": "Ivy League Low Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "ivy-league-low-fade",
+    "image": "/aura-hairstyles/reference/men/short/ivy-league-low-fade/M-SH-023_ivy-league-low-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/ivy-league-low-fade/M-SH-023_ivy-league-low-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-024",
+    "name": "Spike Style",
+    "length": "short",
+    "gender": "men",
+    "slug": "spike-style",
+    "image": "/aura-hairstyles/reference/men/short/spike-style/M-SH-024_spike-style.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/spike-style/M-SH-024_spike-style.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-028",
+    "name": "Textured Fringe",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-fringe",
+    "image": "/aura-hairstyles/reference/men/short/textured-fringe/M-SH-028_textured-fringe.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-fringe/M-SH-028_textured-fringe.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-029",
+    "name": "Textured Taper Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-taper-fade",
+    "image": "/aura-hairstyles/reference/men/short/textured-taper-fade/M-SH-029_textured-taper-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-taper-fade/M-SH-029_textured-taper-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-037",
+    "name": "High Skin Fade Spiky",
+    "length": "short",
+    "gender": "men",
+    "slug": "high-skin-fade-spiky",
+    "image": "/aura-hairstyles/reference/men/short/high-skin-fade-spiky/M-SH-037_high-skin-fade-spiky.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/high-skin-fade-spiky/M-SH-037_high-skin-fade-spiky.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-038",
+    "name": "Buzz Cut",
+    "length": "short",
+    "gender": "men",
+    "slug": "buzz-cut",
+    "image": "/aura-hairstyles/reference/men/short/buzz-cut/M-SH-038_buzz-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/buzz-cut/M-SH-038_buzz-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-039",
+    "name": "Messy Fringe",
+    "length": "short",
+    "gender": "men",
+    "slug": "messy-fringe",
+    "image": "/aura-hairstyles/reference/men/short/messy-fringe/M-SH-039_messy-fringe.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/messy-fringe/M-SH-039_messy-fringe.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-040",
+    "name": "Low Quiff Tapered Sides",
+    "length": "short",
+    "gender": "men",
+    "slug": "low-quiff-tapered-sides",
+    "image": "/aura-hairstyles/reference/men/short/low-quiff-tapered-sides/M-SH-040_low-quiff-tapered-sides.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/low-quiff-tapered-sides/M-SH-040_low-quiff-tapered-sides.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-041",
+    "name": "Spike Style",
+    "length": "short",
+    "gender": "men",
+    "slug": "spike-style",
+    "image": "/aura-hairstyles/reference/men/short/spike-style/M-SH-041_spike-style.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/spike-style/M-SH-041_spike-style.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-042",
+    "name": "Textured Short Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-short-crop",
+    "image": "/aura-hairstyles/reference/men/short/textured-short-crop/M-SH-042_textured-short-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-short-crop/M-SH-042_textured-short-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-044",
+    "name": "Low Taper",
+    "length": "short",
+    "gender": "men",
+    "slug": "low-taper",
+    "image": "/aura-hairstyles/reference/men/short/low-taper/M-SH-044_low-taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/low-taper/M-SH-044_low-taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-045",
+    "name": "Temple Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "temple-fade",
+    "image": "/aura-hairstyles/reference/men/short/temple-fade/M-SH-045_temple-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/temple-fade/M-SH-045_temple-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-046",
+    "name": "Textured Fringe",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-fringe",
+    "image": "/aura-hairstyles/reference/men/short/textured-fringe/M-SH-046_textured-fringe.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-fringe/M-SH-046_textured-fringe.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-047",
+    "name": "Taper",
+    "length": "short",
+    "gender": "men",
+    "slug": "taper",
+    "image": "/aura-hairstyles/reference/men/short/taper/M-SH-047_taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/taper/M-SH-047_taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-048",
+    "name": "Burst Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "burst-fade",
+    "image": "/aura-hairstyles/reference/men/short/burst-fade/M-SH-048_burst-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/burst-fade/M-SH-048_burst-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-049",
+    "name": "Textured Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-crop",
+    "image": "/aura-hairstyles/reference/men/short/textured-crop/M-SH-049_textured-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-crop/M-SH-049_textured-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-050",
+    "name": "Buzz Cut",
+    "length": "short",
+    "gender": "men",
+    "slug": "buzz-cut",
+    "image": "/aura-hairstyles/reference/men/short/buzz-cut/M-SH-050_buzz-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/buzz-cut/M-SH-050_buzz-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-051",
+    "name": "Italian Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "italian-crop",
+    "image": "/aura-hairstyles/reference/men/short/italian-crop/M-SH-051_italian-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/italian-crop/M-SH-051_italian-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-052",
+    "name": "Messy Style",
+    "length": "short",
+    "gender": "men",
+    "slug": "messy-style",
+    "image": "/aura-hairstyles/reference/men/short/messy-style/M-SH-052_messy-style.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/messy-style/M-SH-052_messy-style.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-054",
+    "name": "Side Part Mid Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "side-part-mid-fade",
+    "image": "/aura-hairstyles/reference/men/short/side-part-mid-fade/M-SH-054_side-part-mid-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/side-part-mid-fade/M-SH-054_side-part-mid-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-056",
+    "name": "Textured Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-crop",
+    "image": "/aura-hairstyles/reference/men/short/textured-crop/M-SH-056_textured-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-crop/M-SH-056_textured-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-059",
+    "name": "Old Money Side Part",
+    "length": "short",
+    "gender": "men",
+    "slug": "old-money-side-part",
+    "image": "/aura-hairstyles/reference/men/short/old-money-side-part/M-SH-059_old-money-side-part.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/old-money-side-part/M-SH-059_old-money-side-part.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-060",
+    "name": "Skin Fade Hard Part",
+    "length": "short",
+    "gender": "men",
+    "slug": "skin-fade-hard-part",
+    "image": "/aura-hairstyles/reference/men/short/skin-fade-hard-part/M-SH-060_skin-fade-hard-part.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/skin-fade-hard-part/M-SH-060_skin-fade-hard-part.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-061",
+    "name": "Textured Crop Wavy",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-crop-wavy",
+    "image": "/aura-hairstyles/reference/men/short/textured-crop-wavy/M-SH-061_textured-crop-wavy.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-crop-wavy/M-SH-061_textured-crop-wavy.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-062",
+    "name": "Faux Hawk High Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "faux-hawk-high-fade",
+    "image": "/aura-hairstyles/reference/men/short/faux-hawk-high-fade/M-SH-062_faux-hawk-high-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/faux-hawk-high-fade/M-SH-062_faux-hawk-high-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-063",
+    "name": "Taper Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "taper-fade",
+    "image": "/aura-hairstyles/reference/men/short/taper-fade/M-SH-063_taper-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/taper-fade/M-SH-063_taper-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-064",
+    "name": "Italian Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "italian-crop",
+    "image": "/aura-hairstyles/reference/men/short/italian-crop/M-SH-064_italian-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/italian-crop/M-SH-064_italian-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-065",
+    "name": "Italian Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "italian-crop",
+    "image": "/aura-hairstyles/reference/men/short/italian-crop/M-SH-065_italian-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/italian-crop/M-SH-065_italian-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-066",
+    "name": "Short Crop Fade",
+    "length": "short",
+    "gender": "men",
+    "slug": "short-crop-fade",
+    "image": "/aura-hairstyles/reference/men/short/short-crop-fade/M-SH-066_short-crop-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/short-crop-fade/M-SH-066_short-crop-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-067",
+    "name": "Brush Up",
+    "length": "short",
+    "gender": "men",
+    "slug": "brush-up",
+    "image": "/aura-hairstyles/reference/men/short/brush-up/M-SH-067_brush-up.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/brush-up/M-SH-067_brush-up.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-068",
+    "name": "Textured Crop",
+    "length": "short",
+    "gender": "men",
+    "slug": "textured-crop",
+    "image": "/aura-hairstyles/reference/men/short/textured-crop/M-SH-068_textured-crop.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/textured-crop/M-SH-068_textured-crop.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-069",
+    "name": "Industrial Cut",
+    "length": "short",
+    "gender": "men",
+    "slug": "industrial-cut",
+    "image": "/aura-hairstyles/reference/men/short/industrial-cut/M-SH-069_industrial-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/industrial-cut/M-SH-069_industrial-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-SH-072",
+    "name": "High Skin Fade Spiky",
+    "length": "short",
+    "gender": "men",
+    "slug": "high-skin-fade-spiky",
+    "image": "/aura-hairstyles/reference/men/short/high-skin-fade-spiky/M-SH-072_high-skin-fade-spiky.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/short/high-skin-fade-spiky/M-SH-072_high-skin-fade-spiky.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-008",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "men",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/men/medium/wolf-cut/M-ME-008_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/wolf-cut/M-ME-008_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-009",
+    "name": "Textured Pompadour",
+    "length": "medium",
+    "gender": "men",
+    "slug": "textured-pompadour",
+    "image": "/aura-hairstyles/reference/men/medium/textured-pompadour/M-ME-009_textured-pompadour.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/textured-pompadour/M-ME-009_textured-pompadour.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-010",
+    "name": "Textured Shag",
+    "length": "medium",
+    "gender": "men",
+    "slug": "textured-shag",
+    "image": "/aura-hairstyles/reference/men/medium/textured-shag/M-ME-010_textured-shag.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/textured-shag/M-ME-010_textured-shag.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-011",
+    "name": "Modern Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "modern-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-011_modern-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-011_modern-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-013",
+    "name": "Curly Undercut Fade",
+    "length": "medium",
+    "gender": "men",
+    "slug": "curly-undercut-fade",
+    "image": "/aura-hairstyles/reference/men/medium/curly-undercut-fade/M-ME-013_curly-undercut-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/curly-undercut-fade/M-ME-013_curly-undercut-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-014",
+    "name": "Taper Fade Long Top",
+    "length": "medium",
+    "gender": "men",
+    "slug": "taper-fade-long-top",
+    "image": "/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-014_taper-fade-long-top.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-014_taper-fade-long-top.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-015",
+    "name": "Slick Back",
+    "length": "medium",
+    "gender": "men",
+    "slug": "slick-back",
+    "image": "/aura-hairstyles/reference/men/medium/slick-back/M-ME-015_slick-back.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/slick-back/M-ME-015_slick-back.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-016",
+    "name": "Messy Quiff",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-quiff",
+    "image": "/aura-hairstyles/reference/men/medium/messy-quiff/M-ME-016_messy-quiff.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-quiff/M-ME-016_messy-quiff.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-017",
+    "name": "Textured Quiff Low Taper",
+    "length": "medium",
+    "gender": "men",
+    "slug": "textured-quiff-low-taper",
+    "image": "/aura-hairstyles/reference/men/medium/textured-quiff-low-taper/M-ME-017_textured-quiff-low-taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/textured-quiff-low-taper/M-ME-017_textured-quiff-low-taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-018",
+    "name": "Messy Quiff",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-quiff",
+    "image": "/aura-hairstyles/reference/men/medium/messy-quiff/M-ME-018_messy-quiff.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-quiff/M-ME-018_messy-quiff.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-019",
+    "name": "Slick Back",
+    "length": "medium",
+    "gender": "men",
+    "slug": "slick-back",
+    "image": "/aura-hairstyles/reference/men/medium/slick-back/M-ME-019_slick-back.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/slick-back/M-ME-019_slick-back.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-020",
+    "name": "Two Block",
+    "length": "medium",
+    "gender": "men",
+    "slug": "two-block",
+    "image": "/aura-hairstyles/reference/men/medium/two-block/M-ME-020_two-block.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/two-block/M-ME-020_two-block.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-021",
+    "name": "Messy Textured",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-textured",
+    "image": "/aura-hairstyles/reference/men/medium/messy-textured/M-ME-021_messy-textured.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-textured/M-ME-021_messy-textured.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-022",
+    "name": "Middle Part",
+    "length": "medium",
+    "gender": "men",
+    "slug": "middle-part",
+    "image": "/aura-hairstyles/reference/men/medium/middle-part/M-ME-022_middle-part.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/middle-part/M-ME-022_middle-part.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-029",
+    "name": "Taper Fade Quiff",
+    "length": "medium",
+    "gender": "men",
+    "slug": "taper-fade-quiff",
+    "image": "/aura-hairstyles/reference/men/medium/taper-fade-quiff/M-ME-029_taper-fade-quiff.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/taper-fade-quiff/M-ME-029_taper-fade-quiff.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-030",
+    "name": "Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "mullet",
+    "image": "/aura-hairstyles/reference/men/medium/mullet/M-ME-030_mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/mullet/M-ME-030_mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-031",
+    "name": "Quiff",
+    "length": "medium",
+    "gender": "men",
+    "slug": "quiff",
+    "image": "/aura-hairstyles/reference/men/medium/quiff/M-ME-031_quiff.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/quiff/M-ME-031_quiff.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-033",
+    "name": "Mohawk",
+    "length": "medium",
+    "gender": "men",
+    "slug": "mohawk",
+    "image": "/aura-hairstyles/reference/men/medium/mohawk/M-ME-033_mohawk.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/mohawk/M-ME-033_mohawk.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-034",
+    "name": "Low Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "low-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/low-mullet/M-ME-034_low-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/low-mullet/M-ME-034_low-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-035",
+    "name": "Messy Textured",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-textured",
+    "image": "/aura-hairstyles/reference/men/medium/messy-textured/M-ME-035_messy-textured.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-textured/M-ME-035_messy-textured.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-036",
+    "name": "Pompadour",
+    "length": "medium",
+    "gender": "men",
+    "slug": "pompadour",
+    "image": "/aura-hairstyles/reference/men/medium/pompadour/M-ME-036_pompadour.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/pompadour/M-ME-036_pompadour.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-038",
+    "name": "Blowout Taper",
+    "length": "medium",
+    "gender": "men",
+    "slug": "blowout-taper",
+    "image": "/aura-hairstyles/reference/men/medium/blowout-taper/M-ME-038_blowout-taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/blowout-taper/M-ME-038_blowout-taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-039",
+    "name": "Long Flow Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "long-flow-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/long-flow-mullet/M-ME-039_long-flow-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/long-flow-mullet/M-ME-039_long-flow-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-040",
+    "name": "Middle Part Taper Fade",
+    "length": "medium",
+    "gender": "men",
+    "slug": "middle-part-taper-fade",
+    "image": "/aura-hairstyles/reference/men/medium/middle-part-taper-fade/M-ME-040_middle-part-taper-fade.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/middle-part-taper-fade/M-ME-040_middle-part-taper-fade.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-041",
+    "name": "Long Swept Hard Part",
+    "length": "medium",
+    "gender": "men",
+    "slug": "long-swept-hard-part",
+    "image": "/aura-hairstyles/reference/men/medium/long-swept-hard-part/M-ME-041_long-swept-hard-part.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/long-swept-hard-part/M-ME-041_long-swept-hard-part.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-042",
+    "name": "Side-Swept Medium",
+    "length": "medium",
+    "gender": "men",
+    "slug": "side-swept-medium",
+    "image": "/aura-hairstyles/reference/men/medium/side-swept-medium/M-ME-042_side-swept-medium.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/side-swept-medium/M-ME-042_side-swept-medium.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-043",
+    "name": "Medium Wavy Flow",
+    "length": "medium",
+    "gender": "men",
+    "slug": "medium-wavy-flow",
+    "image": "/aura-hairstyles/reference/men/medium/medium-wavy-flow/M-ME-043_medium-wavy-flow.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/medium-wavy-flow/M-ME-043_medium-wavy-flow.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-044",
+    "name": "Low Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "low-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/low-mullet/M-ME-044_low-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/low-mullet/M-ME-044_low-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-045",
+    "name": "Bro Flow Low Taper",
+    "length": "medium",
+    "gender": "men",
+    "slug": "bro-flow-low-taper",
+    "image": "/aura-hairstyles/reference/men/medium/bro-flow-low-taper/M-ME-045_bro-flow-low-taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/bro-flow-low-taper/M-ME-045_bro-flow-low-taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-046",
+    "name": "Taper Fade Long Top",
+    "length": "medium",
+    "gender": "men",
+    "slug": "taper-fade-long-top",
+    "image": "/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-046_taper-fade-long-top.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-046_taper-fade-long-top.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-049",
+    "name": "Modern Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "modern-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-049_modern-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-049_modern-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-050",
+    "name": "Shaggy",
+    "length": "medium",
+    "gender": "men",
+    "slug": "shaggy",
+    "image": "/aura-hairstyles/reference/men/medium/shaggy/M-ME-050_shaggy.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/shaggy/M-ME-050_shaggy.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-051",
+    "name": "Messy Quiff Mid Taper",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-quiff-mid-taper",
+    "image": "/aura-hairstyles/reference/men/medium/messy-quiff-mid-taper/M-ME-051_messy-quiff-mid-taper.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-quiff-mid-taper/M-ME-051_messy-quiff-mid-taper.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-052",
+    "name": "Messy Textured",
+    "length": "medium",
+    "gender": "men",
+    "slug": "messy-textured",
+    "image": "/aura-hairstyles/reference/men/medium/messy-textured/M-ME-052_messy-textured.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/messy-textured/M-ME-052_messy-textured.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-053",
+    "name": "Taper Fade Long Top",
+    "length": "medium",
+    "gender": "men",
+    "slug": "taper-fade-long-top",
+    "image": "/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-053_taper-fade-long-top.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/taper-fade-long-top/M-ME-053_taper-fade-long-top.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-054",
+    "name": "Slick Back",
+    "length": "medium",
+    "gender": "men",
+    "slug": "slick-back",
+    "image": "/aura-hairstyles/reference/men/medium/slick-back/M-ME-054_slick-back.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/slick-back/M-ME-054_slick-back.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-ME-055",
+    "name": "Modern Mullet",
+    "length": "medium",
+    "gender": "men",
+    "slug": "modern-mullet",
+    "image": "/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-055_modern-mullet.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/medium/modern-mullet/M-ME-055_modern-mullet.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "M-LO-002",
+    "name": "Man Bun",
+    "length": "long",
+    "gender": "men",
+    "slug": "man-bun",
+    "image": "/aura-hairstyles/reference/men/long/man-bun/M-LO-002_man-bun.jpg",
+    "diskPath": "public/aura-hairstyles/reference/men/long/man-bun/M-LO-002_man-bun.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-SH-002",
+    "name": "Mixie Cut",
+    "length": "short",
+    "gender": "women",
+    "slug": "mixie-cut",
+    "image": "/aura-hairstyles/reference/women/short/mixie-cut/W-SH-002_mixie-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/short/mixie-cut/W-SH-002_mixie-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-SH-003",
+    "name": "Short Curly",
+    "length": "short",
+    "gender": "women",
+    "slug": "short-curly",
+    "image": "/aura-hairstyles/reference/women/short/short-curly/W-SH-003_short-curly.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/short/short-curly/W-SH-003_short-curly.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-002",
+    "name": "Air Bangs",
+    "length": "medium",
+    "gender": "women",
+    "slug": "air-bangs",
+    "image": "/aura-hairstyles/reference/women/medium/air-bangs/W-ME-002_air-bangs.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/air-bangs/W-ME-002_air-bangs.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-003",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-003_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-003_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-004",
+    "name": "Beach Waves",
+    "length": "medium",
+    "gender": "women",
+    "slug": "beach-waves",
+    "image": "/aura-hairstyles/reference/women/medium/beach-waves/W-ME-004_beach-waves.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/beach-waves/W-ME-004_beach-waves.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-005",
+    "name": "Bottleneck Bangs",
+    "length": "medium",
+    "gender": "women",
+    "slug": "bottleneck-bangs",
+    "image": "/aura-hairstyles/reference/women/medium/bottleneck-bangs/W-ME-005_bottleneck-bangs.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/bottleneck-bangs/W-ME-005_bottleneck-bangs.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-010",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-010_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-010_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-011",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-011_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-011_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-012",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-012_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-012_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-013",
+    "name": "Shag",
+    "length": "medium",
+    "gender": "women",
+    "slug": "shag",
+    "image": "/aura-hairstyles/reference/women/medium/shag/W-ME-013_shag.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/shag/W-ME-013_shag.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-014",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-014_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-014_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-016",
+    "name": "Feather Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "feather-cut",
+    "image": "/aura-hairstyles/reference/women/medium/feather-cut/W-ME-016_feather-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/feather-cut/W-ME-016_feather-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-018",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-018_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-018_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-019",
+    "name": "Jellyfish Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "jellyfish-cut",
+    "image": "/aura-hairstyles/reference/women/medium/jellyfish-cut/W-ME-019_jellyfish-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/jellyfish-cut/W-ME-019_jellyfish-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-020",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-020_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-020_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-021",
+    "name": "Layer Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "layer-cut",
+    "image": "/aura-hairstyles/reference/women/medium/layer-cut/W-ME-021_layer-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/layer-cut/W-ME-021_layer-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-023",
+    "name": "Curly Layers",
+    "length": "medium",
+    "gender": "women",
+    "slug": "curly-layers",
+    "image": "/aura-hairstyles/reference/women/medium/curly-layers/W-ME-023_curly-layers.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/curly-layers/W-ME-023_curly-layers.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-025",
+    "name": "Messy Ponytail",
+    "length": "medium",
+    "gender": "women",
+    "slug": "messy-ponytail",
+    "image": "/aura-hairstyles/reference/women/medium/messy-ponytail/W-ME-025_messy-ponytail.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/messy-ponytail/W-ME-025_messy-ponytail.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-028",
+    "name": "Blowout",
+    "length": "medium",
+    "gender": "women",
+    "slug": "blowout",
+    "image": "/aura-hairstyles/reference/women/medium/blowout/W-ME-028_blowout.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/blowout/W-ME-028_blowout.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-034",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-034_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-034_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-035",
+    "name": "Shag",
+    "length": "medium",
+    "gender": "women",
+    "slug": "shag",
+    "image": "/aura-hairstyles/reference/women/medium/shag/W-ME-035_shag.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/shag/W-ME-035_shag.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-039",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-039_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-039_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-044",
+    "name": "Butterfly Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/medium/butterfly-cut/W-ME-044_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/butterfly-cut/W-ME-044_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-045",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-045_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-045_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-047",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-047_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-047_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-048",
+    "name": "Medium Layered",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-layered",
+    "image": "/aura-hairstyles/reference/women/medium/medium-layered/W-ME-048_medium-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-layered/W-ME-048_medium-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-049",
+    "name": "Medium Wavy",
+    "length": "medium",
+    "gender": "women",
+    "slug": "medium-wavy",
+    "image": "/aura-hairstyles/reference/women/medium/medium-wavy/W-ME-049_medium-wavy.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/medium-wavy/W-ME-049_medium-wavy.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-050",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-050_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-050_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-ME-056",
+    "name": "Wolf Cut",
+    "length": "medium",
+    "gender": "women",
+    "slug": "wolf-cut",
+    "image": "/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-056_wolf-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/medium/wolf-cut/W-ME-056_wolf-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-005",
+    "name": "Long Layers",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-layers",
+    "image": "/aura-hairstyles/reference/women/long/long-layers/W-LO-005_long-layers.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-layers/W-LO-005_long-layers.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-011",
+    "name": "Bubble Ponytail",
+    "length": "long",
+    "gender": "women",
+    "slug": "bubble-ponytail",
+    "image": "/aura-hairstyles/reference/women/long/bubble-ponytail/W-LO-011_bubble-ponytail.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/bubble-ponytail/W-LO-011_bubble-ponytail.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-012",
+    "name": "Butterfly Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-012_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-012_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-014",
+    "name": "Butterfly Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-014_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-014_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-018",
+    "name": "Long Layered",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-layered",
+    "image": "/aura-hairstyles/reference/women/long/long-layered/W-LO-018_long-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-layered/W-LO-018_long-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-019",
+    "name": "Long Layered",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-layered",
+    "image": "/aura-hairstyles/reference/women/long/long-layered/W-LO-019_long-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-layered/W-LO-019_long-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-021",
+    "name": "Fishtail Braid",
+    "length": "long",
+    "gender": "women",
+    "slug": "fishtail-braid",
+    "image": "/aura-hairstyles/reference/women/long/fishtail-braid/W-LO-021_fishtail-braid.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/fishtail-braid/W-LO-021_fishtail-braid.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-024",
+    "name": "High Ponytail",
+    "length": "long",
+    "gender": "women",
+    "slug": "high-ponytail",
+    "image": "/aura-hairstyles/reference/women/long/high-ponytail/W-LO-024_high-ponytail.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/high-ponytail/W-LO-024_high-ponytail.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-026",
+    "name": "Butterfly Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-026_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-026_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-030",
+    "name": "Layer Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "layer-cut",
+    "image": "/aura-hairstyles/reference/women/long/layer-cut/W-LO-030_layer-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/layer-cut/W-LO-030_layer-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-031",
+    "name": "Butterfly Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-031_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-031_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-035",
+    "name": "Long Layers Curtain Bangs",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-layers-curtain-bangs",
+    "image": "/aura-hairstyles/reference/women/long/long-layers-curtain-bangs/W-LO-035_long-layers-curtain-bangs.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-layers-curtain-bangs/W-LO-035_long-layers-curtain-bangs.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-036",
+    "name": "Long Straight",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-straight",
+    "image": "/aura-hairstyles/reference/women/long/long-straight/W-LO-036_long-straight.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-straight/W-LO-036_long-straight.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-037",
+    "name": "Mermaid Waves",
+    "length": "long",
+    "gender": "women",
+    "slug": "mermaid-waves",
+    "image": "/aura-hairstyles/reference/women/long/mermaid-waves/W-LO-037_mermaid-waves.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/mermaid-waves/W-LO-037_mermaid-waves.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-041",
+    "name": "Layered",
+    "length": "long",
+    "gender": "women",
+    "slug": "layered",
+    "image": "/aura-hairstyles/reference/women/long/layered/W-LO-041_layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/layered/W-LO-041_layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-043",
+    "name": "Korean Layered",
+    "length": "long",
+    "gender": "women",
+    "slug": "korean-layered",
+    "image": "/aura-hairstyles/reference/women/long/korean-layered/W-LO-043_korean-layered.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/korean-layered/W-LO-043_korean-layered.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-045",
+    "name": "Butterfly Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "butterfly-cut",
+    "image": "/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-045_butterfly-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/butterfly-cut/W-LO-045_butterfly-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-047",
+    "name": "V-Cut",
+    "length": "long",
+    "gender": "women",
+    "slug": "v-cut",
+    "image": "/aura-hairstyles/reference/women/long/v-cut/W-LO-047_v-cut.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/v-cut/W-LO-047_v-cut.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-055",
+    "name": "Long Wavy",
+    "length": "long",
+    "gender": "women",
+    "slug": "long-wavy",
+    "image": "/aura-hairstyles/reference/women/long/long-wavy/W-LO-055_long-wavy.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/long-wavy/W-LO-055_long-wavy.jpg",
+    "isMannequin": true
+  },
+  {
+    "id": "W-LO-058",
+    "name": "Messy Bun",
+    "length": "long",
+    "gender": "women",
+    "slug": "messy-bun",
+    "image": "/aura-hairstyles/reference/women/long/messy-bun/W-LO-058_messy-bun.jpg",
+    "diskPath": "public/aura-hairstyles/reference/women/long/messy-bun/W-LO-058_messy-bun.jpg",
+    "isMannequin": true
+  }
+]

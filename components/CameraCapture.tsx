@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 
 export type CapturedPhoto = {
   base64: string;
-  mediaType: "image/jpeg";
+  mediaType: "image/jpeg" | "image/png";
   label: string;
   preview: string;
 };
@@ -42,7 +42,7 @@ const ANGLES = [
     id: "back",
     label: "Back",
     emoji: "🔄",
-    color: "#22c55e",
+    color: "#4FD69C",
     instruction: "Turn around — show the BACK",
     sub: "Most important shot for density",
   },
@@ -62,6 +62,13 @@ export default function CameraCapture({ onComplete }: Props) {
   const [videoReady, setVideoReady]   = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [pendingStream, setPendingStream] = useState<MediaStream | null>(null);
+  // Camera only works in a secure context (https / localhost). On plain-HTTP
+  // network access (phone over LAN) it is blocked by the browser — so we make
+  // Upload the primary action there instead of the camera.
+  const [cameraSupported, setCameraSupported] = useState(true);
+  useEffect(() => {
+    setCameraSupported(window.isSecureContext && !!navigator.mediaDevices?.getUserMedia);
+  }, []);
 
   const angle = ANGLES[currentAngle];
 
@@ -121,6 +128,8 @@ export default function CameraCapture({ onComplete }: Props) {
     const video  = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !videoReady) return;
+    // Guard against capturing an empty/black frame before real pixels exist.
+    if (video.readyState < 2 || video.videoWidth === 0) return;
 
     const w = video.videoWidth  || 640;
     const h = video.videoHeight || 480;
@@ -160,24 +169,26 @@ export default function CameraCapture({ onComplete }: Props) {
         setTick(false);
         setCurrentAngle((i) => i + 1);
 
-        // Only switch cameras for the back shot (angle 2 → 3)
-        // For all other transitions the stream is still live — no reset needed
+        // Only attempt a rear-camera switch for the back shot (angle 2 → 3).
+        // IMPORTANT: get the new stream FIRST, and only stop the old one if it
+        // succeeds. On single-camera devices (laptops) the rear request fails —
+        // in that case we keep the original stream alive instead of killing it.
         if (currentAngle === 2 && streamRef.current) {
-          setVideoReady(false); // back camera needs to load fresh
-          streamRef.current.getTracks().forEach((t) => t.stop());
+          const oldStream = streamRef.current;
           navigator.mediaDevices
             .getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
             .then((newStream) => {
+              oldStream.getTracks().forEach((t) => t.stop());
               streamRef.current = newStream;
               if (videoRef.current) {
                 videoRef.current.srcObject = newStream;
                 videoRef.current.play().catch(() => {});
-                // onCanPlay will fire and set videoReady = true
+                // onPlaying will fire and set videoReady = true
               }
             })
             .catch(() => {
-              // Back camera unavailable — keep front camera and mark ready
-              setVideoReady(true);
+              // Rear camera unavailable (e.g. laptop) — keep the front stream
+              // running. It is still attached and live, so capture stays usable.
             });
         }
         // angles 0→1 and 1→2: stream keeps playing, already ready
@@ -192,63 +203,91 @@ export default function CameraCapture({ onComplete }: Props) {
     }
   }, [angle.id, currentAngle, photos, videoReady, stopCamera, onComplete]);
 
-  // ── Upload flow — picks photos one by one ─────────────────────
-  const handleUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        const photo: CapturedPhoto = {
-          base64: dataUrl.split(",")[1],
-          mediaType: "image/jpeg",
-          label: ANGLES[currentAngle].id,
-          preview: dataUrl,
-        };
-        const newPhotos = [...photos, photo];
-        setPhotos(newPhotos);
+  // ── Upload flow — pick all 4 photos at once in a single picker ────
+  // Browsers block re-opening a file picker programmatically (not a user
+  // gesture), so we select every angle in one go and map them in order.
+  // Phone photos are huge (several MB) — we downscale + re-encode them so the
+  // request to the analysis API stays under its size limit (avoids HTTP 413).
+  // Uses createImageBitmap with imageOrientation:"from-image" so EXIF rotation
+  // from phone cameras is respected (otherwise photos come out sideways).
+  // Small max dimension keeps 4 base64 images well under Groq's request limit.
+  // Bigger, sharper input → sharper output. The model can't render detail it was
+  // never given. 1280/0.82 keeps payloads reasonable while lifting quality.
+  const compressImage = async (file: File, maxDim = 1280, quality = 0.82): Promise<string> => {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    let width = bitmap.width;
+    let height = bitmap.height;
+    if (width >= height && width > maxDim) {
+      height = Math.round((height * maxDim) / width);
+      width = maxDim;
+    } else if (height > maxDim) {
+      width = Math.round((width * maxDim) / height);
+      height = maxDim;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { bitmap.close(); throw new Error("Canvas not available"); }
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    return canvas.toDataURL("image/jpeg", quality);
+  };
 
-        if (currentAngle < ANGLES.length - 1) {
-          setCurrentAngle((i) => i + 1);
-          setTimeout(() => fileInputRef.current?.click(), 300);
-        } else {
-          setStep("home");
-          onComplete(newPhotos);
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []).slice(0, ANGLES.length);
       e.target.value = "";
+      if (files.length === 0) return;
+
+      try {
+        const newPhotos: CapturedPhoto[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const dataUrl = await compressImage(files[i]);
+          newPhotos.push({
+            base64: dataUrl.split(",")[1],
+            mediaType: "image/jpeg",
+            label: ANGLES[i].id,
+            preview: dataUrl,
+          });
+        }
+        setPhotos(newPhotos);
+        setStep("home");
+        onComplete(newPhotos);
+      } catch {
+        setError("Could not read those photos — please try different images.");
+      }
     },
-    [currentAngle, photos, onComplete]
+    [onComplete]
   );
 
   // ── HOME SCREEN ────────────────────────────────────────────────
   if (step === "home") {
     return (
-      <div className="flex flex-col min-h-screen bg-[#0d0d0d] px-4 pb-10">
+      <div className="flex flex-col min-h-screen px-4 pb-32" style={{ background: "var(--bg)" }}>
         {/* Header */}
-        <div className="pt-10 pb-8 text-center">
-          <h1 className="text-4xl font-black gradient-text mb-1">Hair AI</h1>
-          <p className="text-gray-400 text-sm">Professional hairstyle analyser</p>
+        <div className="pt-12 pb-6 text-center">
+          <h1 className="text-3xl font-black gradient-text-animated mb-1">Scan Hair</h1>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>4-angle AI analysis · 60 seconds</p>
         </div>
 
         {/* Instruction card */}
-        <div className="rounded-3xl p-5 mb-6" style={{ background: "#1a1a1a", border: "1.5px solid #ffffff12" }}>
-          <p className="text-white font-bold text-base mb-4">We'll take 4 quick photos:</p>
+        <div className="rounded-3xl p-5 mb-6"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <p className="font-bold text-sm mb-4" style={{ color: "var(--text-primary)" }}>We&apos;ll take 4 quick photos:</p>
           <div className="space-y-3">
             {ANGLES.map((a, i) => (
               <div key={a.id} className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                  style={{ background: a.color + "20", border: `1.5px solid ${a.color}50` }}>
+                  style={{ background: a.color + "18", border: `1px solid ${a.color}40` }}>
                   {a.emoji}
                 </div>
                 <div>
-                  <p className="text-white text-sm font-semibold">{a.label}</p>
-                  <p className="text-gray-500 text-xs">{a.sub}</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{a.label}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{a.sub}</p>
                 </div>
-                <div className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-gray-600"
-                  style={{ border: "1.5px solid #333" }}>
+                <div className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
                   {i + 1}
                 </div>
               </div>
@@ -257,32 +296,45 @@ export default function CameraCapture({ onComplete }: Props) {
         </div>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-500/40 rounded-2xl p-3 text-red-300 text-sm text-center mb-4">
+          <div className="rounded-2xl p-3 text-sm text-center mb-4"
+            style={{ background: "rgba(224,106,92,0.1)", border: "1px solid rgba(224,106,92,0.3)", color: "#E06A5C" }}>
             {error}
           </div>
         )}
 
-        {/* CTA buttons */}
+        {!cameraSupported && (
+          <div className="rounded-2xl p-3 text-xs text-center mb-4"
+            style={{ background: "rgba(143,167,154,0.06)", border: "1px solid rgba(143,167,154,0.2)", color: "var(--text-secondary)" }}>
+            📷 Camera needs HTTPS, so it&apos;s unavailable here. Use <span style={{ color: "var(--accent)", fontWeight: 700 }}>Upload</span> below — it works the same.
+          </div>
+        )}
+
+        {/* CTA buttons — Upload becomes primary when the camera can't run */}
         <button
-          onClick={openCamera}
-          className="w-full py-5 rounded-2xl font-black text-xl text-white mb-3 active:scale-95 transition-transform flex items-center justify-center gap-3"
-          style={{ background: "linear-gradient(135deg, #f97316, #facc15)" }}
+          onClick={() => { setPhotos([]); fileInputRef.current?.click(); }}
+          className={`w-full rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95 transition-transform ${cameraSupported ? "py-3.5 text-sm mb-3" : "py-4 text-base mb-3"}`}
+          style={cameraSupported
+            ? { background: "transparent", border: "1px solid var(--border-bright)", color: "var(--text-secondary)" }
+            : { background: "linear-gradient(135deg, #7C3AED 0%, #4F46E5 45%, #0EA5E9 100%)", color: "#fff", boxShadow: "0 0 24px rgba(99,102,241,0.4)" }}
         >
-          <span className="text-2xl">📷</span> Start Camera
+          <span className="text-xl">📁</span> Upload 4 Photos (front, left, right, back)
         </button>
 
         <button
-          onClick={() => { setCurrentAngle(0); setPhotos([]); setStep("upload"); fileInputRef.current?.click(); }}
-          className="w-full py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-3 active:scale-95 transition-transform"
-          style={{ background: "transparent", border: "2px solid #ffffff20", color: "#aaa" }}
+          onClick={openCamera}
+          className={`w-full rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-transform ${cameraSupported ? "py-4 font-black text-base" : "py-3 font-semibold text-sm"}`}
+          style={cameraSupported
+            ? { background: "linear-gradient(135deg, #7C3AED 0%, #4F46E5 45%, #0EA5E9 100%)", color: "#fff", boxShadow: "0 0 24px rgba(99,102,241,0.4)" }
+            : { background: "transparent", border: "1px solid var(--border-bright)", color: "var(--text-muted)" }}
         >
-          <span>📁</span> Upload Photos Instead
+          <span className="text-xl">📷</span> {cameraSupported ? "Start Camera" : "Camera (needs HTTPS)"}
         </button>
 
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          multiple
           className="hidden"
           onChange={handleUpload}
         />
@@ -292,7 +344,7 @@ export default function CameraCapture({ onComplete }: Props) {
 
   // ── CAMERA SCREEN ──────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-[60] flex flex-col">
       {/* Flash overlay */}
       {flash && <div className="absolute inset-0 bg-white z-50 pointer-events-none" style={{ opacity: 0.7 }} />}
 
@@ -304,8 +356,8 @@ export default function CameraCapture({ onComplete }: Props) {
         muted
         playsInline
         autoPlay
+        onPlaying={() => setVideoReady(true)}
         onCanPlay={() => setVideoReady(true)}
-        onLoadedMetadata={() => setVideoReady(true)}
       />
 
       {/* Top bar */}
