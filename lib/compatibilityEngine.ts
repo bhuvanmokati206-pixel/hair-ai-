@@ -135,8 +135,8 @@ export function scoreStyles(analysis: HairAnalysis, styleNames: string[]): Score
     const tex     = listScore(texture,  req.textures);
     const den     = listScore(density,  req.densities);
 
-    // Weights: length zones matter most, then texture, then density.
-    const score = Math.round(top * 0.35 + sides * 0.25 + nape * 0.20 + tex * 0.10 + den * 0.10);
+    // Weights: Hair type / texture and density matter most (60% combined), then length zones.
+    const score = Math.round(tex * 0.40 + den * 0.20 + top * 0.20 + sides * 0.10 + nape * 0.10);
 
     return { styleName: name, score, breakdown: { top, sides, nape, texture: tex, density: den } };
   }).sort((a, b) => b.score - a.score);

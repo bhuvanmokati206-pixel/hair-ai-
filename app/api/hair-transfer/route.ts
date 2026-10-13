@@ -1,17 +1,11 @@
-// POST /api/hair-transfer — put a reference hairstyle onto the customer.
-//
-// nano-banana-2 is multi-image: we pass [customerPhoto, referencePhoto] and ask
-// it to copy the hairstyle from image 2 onto the person in image 1. Not a
-// dedicated hair-transfer model (HairFastGAN would be better), so it approximates
-// the reference — see the queued spike before trusting it in production.
-
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
+import { Jimp } from "jimp";
+
+export const maxDuration = 60;
 
 const REPLICATE_MODEL = "google/nano-banana-2";
 
-// Fetch a reference URL to base64 server-side. Keeps the model off third-party
-// hosts and dodges hotlink/CSP issues; caps size so a huge image can't stall.
 async function urlToDataUri(url: string): Promise<string> {
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`reference fetch ${res.status}`);
@@ -22,49 +16,99 @@ async function urlToDataUri(url: string): Promise<string> {
   return `data:${type};base64,${buf.toString("base64")}`;
 }
 
-const PROMPT = [
-  "Image 1 is a photo of a person. Image 2 is a reference hairstyle.",
-  "Give the person in image 1 the exact hairstyle, shape, length and colour from image 2.",
-  "Keep the person's face, skin tone, identity, ears, neck, clothing, background and lighting unchanged — change only the hair.",
-  "No gel or product sheen, no smoothing. Individual strands visible, matte natural finish, seamless blend at the hairline.",
-  "Photorealistic.",
+// Cuts the 2×2 collage into four standalone angle images: [front, left, right, back]
+async function splitGrid(buffer: Buffer): Promise<string[]> {
+  const img = await Jimp.read(buffer);
+  const w = Math.floor(img.bitmap.width / 2);
+  const h = Math.floor(img.bitmap.height / 2);
+  const quads: string[] = [];
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 2; col++) {
+      const tile = img.clone().crop({ x: col * w, y: row * h, w, h });
+      quads.push((await tile.getBuffer("image/jpeg", { quality: 88 })).toString("base64"));
+    }
+  }
+  return quads; // [front, left, right, back]
+}
+
+const MULTI_ANGLE_PROMPT = [
+  "Image 1 is a photograph of a real customer. Image 2 is a reference hairstyle.",
+  "Transfer the hairstyle style, silhouette, texture, and fading technique from Image 2 onto the person in Image 1.",
+  "CRITICAL HAIR LENGTH INSTRUCTION: Respect the person's actual hair length from Image 1. Do NOT artificially lengthen or simulate instant hair growth if the reference image has longer hair. Adapt the cut, fade, texture, parting, and silhouette to the person's CURRENT actual hair length.",
+  "Preserve their exact identity: keep the same face, eyes, nose, mouth, eyebrows, jawline, cheeks, skin tone, facial hair, clothing, and lighting unchanged.",
+  "Output a 2×2 grid showing this SAME person with the adapted hairstyle from four views in this exact order:",
+  "TOP-LEFT = front view (face to camera, exact original face)",
+  "TOP-RIGHT = LEFT-side profile (head turned 90° so left ear faces camera)",
+  "BOTTOM-LEFT = RIGHT-side profile (head turned 90° so right ear faces camera)",
+  "BOTTOM-RIGHT = back of the head (180° back view)",
+  "All four panels show the exact same haircut on that one head. Real photographic hair with visible strands, natural matte finish, no plastic CGI sheen.",
 ].join("\n\n");
 
 export async function POST(req: NextRequest) {
   try {
     const {
-      targetBase64, targetMediaType, referenceUrl, referenceBase64, referenceMediaType,
-    } = await req.json() as {
-      targetBase64?: string; targetMediaType?: string;
-      referenceUrl?: string; referenceBase64?: string; referenceMediaType?: string;
+      targetBase64,
+      targetMediaType = "image/jpeg",
+      referenceUrl,
+      referenceBase64,
+      referenceMediaType = "image/jpeg",
+      styleName = "Reference Hairstyle",
+    } = (await req.json()) as {
+      targetBase64?: string;
+      targetMediaType?: string;
+      referenceUrl?: string;
+      referenceBase64?: string;
+      referenceMediaType?: string;
+      styleName?: string;
     };
 
-    if (!targetBase64 || !targetMediaType) {
+    if (!targetBase64) {
       return NextResponse.json({ error: "A customer photo is required." }, { status: 400 });
     }
     if (!referenceUrl && !referenceBase64) {
       return NextResponse.json({ error: "A reference hairstyle is required." }, { status: 400 });
     }
-    if (!process.env.REPLICATE_API_TOKEN) {
-      return NextResponse.json({ error: "REPLICATE_API_TOKEN not configured" }, { status: 503 });
+
+    const cleanTargetBase64 = targetBase64.includes(";base64,")
+      ? targetBase64.split(";base64,")[1]
+      : targetBase64;
+    const targetUri = `data:${targetMediaType};base64,${cleanTargetBase64}`;
+
+    if (process.env.USE_MOCK_ANALYSIS === "true" || !process.env.REPLICATE_API_TOKEN) {
+      // Return target image for demo simulation if token not configured
+      return NextResponse.json({
+        imageUrl: targetUri,
+        angles: {
+          front: targetUri,
+          left: targetUri,
+          right: targetUri,
+          back: targetUri,
+        },
+        styleName,
+      });
     }
 
-    const targetUri = `data:${targetMediaType};base64,${targetBase64}`;
-    const referenceUri = referenceBase64
-      ? `data:${referenceMediaType ?? "image/jpeg"};base64,${referenceBase64}`
-      : await urlToDataUri(referenceUrl!);
+    let referenceUri: string;
+    if (referenceBase64) {
+      const cleanRefBase64 = referenceBase64.includes(";base64,")
+        ? referenceBase64.split(";base64,")[1]
+        : referenceBase64;
+      referenceUri = `data:${referenceMediaType};base64,${cleanRefBase64}`;
+    } else {
+      referenceUri = await urlToDataUri(referenceUrl!);
+    }
 
     const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
     let output: { url: () => string };
     try {
-      output = await replicate.run(REPLICATE_MODEL, {
+      output = (await replicate.run(REPLICATE_MODEL, {
         input: {
-          prompt: PROMPT,
-          image_input: [targetUri, referenceUri], // order matters: [person, reference]
-          resolution: "1K", // kept at 1K for faster generation
+          prompt: MULTI_ANGLE_PROMPT,
+          image_input: [targetUri, referenceUri], // [person, reference]
+          resolution: "2K",
         },
-      }) as { url: () => string };
+      })) as { url: () => string };
     } catch (err) {
       console.error("[hair-transfer] model call failed:", err);
       return NextResponse.json({ error: "Transfer failed. Please try again." }, { status: 502 });
@@ -79,10 +123,43 @@ export async function POST(req: NextRequest) {
     if (!imgRes.ok) {
       return NextResponse.json({ error: "Failed to fetch result." }, { status: 502 });
     }
-    const base64 = Buffer.from(await imgRes.arrayBuffer()).toString("base64");
-    const mimeType = imgRes.headers.get("content-type") ?? "image/jpeg";
+    const buffer = Buffer.from(await imgRes.arrayBuffer());
 
-    return NextResponse.json({ imageUrl: `data:${mimeType};base64,${base64}` });
+    let quads: string[];
+    try {
+      quads = await splitGrid(buffer);
+    } catch (splitErr) {
+      console.warn("[hair-transfer] grid split fallback:", splitErr);
+      const fallbackBase64 = buffer.toString("base64");
+      const mimeType = imgRes.headers.get("content-type") ?? "image/jpeg";
+      const fallbackUrl = `data:${mimeType};base64,${fallbackBase64}`;
+      return NextResponse.json({
+        imageUrl: fallbackUrl,
+        angles: {
+          front: fallbackUrl,
+          left: fallbackUrl,
+          right: fallbackUrl,
+          back: fallbackUrl,
+        },
+        styleName,
+      });
+    }
+
+    const frontUri = `data:image/jpeg;base64,${quads[0]}`;
+    const leftUri = `data:image/jpeg;base64,${quads[1]}`;
+    const rightUri = `data:image/jpeg;base64,${quads[2]}`;
+    const backUri = `data:image/jpeg;base64,${quads[3]}`;
+
+    return NextResponse.json({
+      imageUrl: frontUri,
+      angles: {
+        front: frontUri,
+        left: leftUri,
+        right: rightUri,
+        back: backUri,
+      },
+      styleName,
+    });
   } catch (err) {
     console.error("[hair-transfer] error:", err);
     return NextResponse.json({ error: "Transfer failed. Please try again." }, { status: 500 });

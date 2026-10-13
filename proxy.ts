@@ -11,7 +11,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Reachable signed out. Everything else requires a session.
-const PUBLIC_ROUTES = ["/login", "/splash", "/onboarding"];
+const PUBLIC_ROUTES = ["/login", "/splash", "/onboarding", "/otp"];
 
 export async function proxy(request: NextRequest) {
   // Escape hatch for local testing without auth. Must be unset in production —

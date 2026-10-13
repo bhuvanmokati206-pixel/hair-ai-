@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { StyleAngles } from "./HairAIAutomation";
 import { downloadImage, imageFilename } from "@/lib/download";
@@ -13,6 +13,7 @@ type Props = {
   styleName: string;
   angles?: StyleAngles;
   anglesLoading?: Partial<Record<AngleKey, boolean>>;
+  whySuits?: string;
   summary?: string;
   barberInstructions?: string;
   onGenerateAngle?: (angle: AngleKey) => void;
@@ -27,9 +28,10 @@ const EXTRA_ANGLES: { key: AngleKey; label: string; icon: string }[] = [
 ];
 
 export default function StyleDetailModal({
-  open, onClose, styleName, angles, anglesLoading, summary, barberInstructions, onGenerateAngle, onGenerateAllAngles, onGenerateGrid,
+  open, onClose, styleName, angles, anglesLoading, whySuits, summary, barberInstructions, onGenerateAngle, onGenerateAllAngles, onGenerateGrid,
 }: Props) {
   const [zoomed, setZoomed] = useState<{ url: string; label: string } | null>(null);
+  const swipeStartX = useRef<number | null>(null);
 
   const frontUrl = angles?.front;
 
@@ -43,6 +45,15 @@ export default function StyleDetailModal({
     { key: "front", label: "Front", url: frontUrl },
     ...EXTRA_ANGLES.filter((a) => angles?.[a.key]).map((a) => ({ key: a.key, label: a.label, url: angles![a.key]! })),
   ];
+
+  // Swipe left/right in the full-screen viewer to move between angles.
+  const goZoom = (dir: number) => {
+    if (!zoomed || zoomImages.length < 2) return;
+    const i = zoomImages.findIndex((z) => z.url === zoomed.url);
+    if (i < 0) return;
+    const next = zoomImages[(i + dir + zoomImages.length) % zoomImages.length];
+    setZoomed({ url: next.url, label: next.label });
+  };
 
   return (
     <AnimatePresence>
@@ -172,6 +183,23 @@ export default function StyleDetailModal({
               )}
             </div>
 
+            {/* Why this suits you — casual bullet points */}
+            {whySuits && (
+              <div className="px-4 pb-3 pt-1">
+                <p className="section-label mb-1.5">Why this suits you</p>
+                <div className="rounded-2xl p-3" style={{ background: "linear-gradient(160deg, rgba(143,167,154,0.1), rgba(23,22,20,0.4))", border: "1px solid rgba(143,167,154,0.24)" }}>
+                  <ul style={{ display: "flex", flexDirection: "column", gap: 7, margin: 0, padding: 0, listStyle: "none" }}>
+                    {whySuits.split("\n").map((l) => l.replace(/^\s*[-•*]\s*/, "").trim()).filter(Boolean).map((line, i) => (
+                      <li key={i} className="text-xs leading-relaxed" style={{ color: "var(--text-primary)", display: "flex", gap: 8 }}>
+                        <span style={{ color: "var(--accent)", flexShrink: 0 }}>•</span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {/* Summary */}
             {summary && (
               <div className="px-4 pb-3">
@@ -218,10 +246,26 @@ export default function StyleDetailModal({
                       style={{ background: "rgba(255,255,255,0.15)" }}>✕</button>
                   </div>
                 </div>
-                <div className="flex-1 flex items-center justify-center px-2" style={{ touchAction: "pinch-zoom" }}>
+                <div
+                  className="flex-1 flex items-center justify-center px-2"
+                  style={{ touchAction: "pan-y pinch-zoom" }}
+                  onPointerDown={(e) => { swipeStartX.current = e.clientX; }}
+                  onPointerUp={(e) => {
+                    e.stopPropagation();
+                    const start = swipeStartX.current; swipeStartX.current = null;
+                    if (start == null) return;
+                    const dx = e.clientX - start;
+                    if (Math.abs(dx) > 45) goZoom(dx < 0 ? 1 : -1); // swipe left → next angle
+                  }}
+                >
                   <img src={zoomed.url} alt={zoomed.label} className="max-w-full max-h-full"
-                    style={{ touchAction: "pinch-zoom" }} onClick={(e) => e.stopPropagation()} />
+                    style={{ touchAction: "pinch-zoom", pointerEvents: "none" }} />
                 </div>
+                {zoomImages.length > 1 && (
+                  <div className="text-center pb-1" style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, letterSpacing: ".1em" }}>
+                    ‹ swipe to change angle ›
+                  </div>
+                )}
                 <div className="flex justify-center gap-2 pb-8 pt-2">
                   {zoomImages.map((img) => (
                     <button key={img.key}

@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 
+// ── NOIR palette (from the imported design) ──────────────────────
+const ACC = "#8FA79A";
+const INK = "#F2EFE9";
+const MUTE = "#948D82";
+const MICRO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#7C766C",
+};
+
 export type ServicePick = { hair: boolean; beard: boolean; colour: boolean; treatments: boolean };
 
 type Option = { key: keyof ServicePick; label: string; icon: string; desc: string };
@@ -35,19 +44,16 @@ export default function ServiceSelection({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col min-h-screen px-6 pt-14 pb-10" style={{ background: "var(--bg)" }}
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+      className="min-h-screen" style={{ background: "var(--bg)", color: INK, padding: "56px 22px calc(40px + env(safe-area-inset-bottom))" }}
     >
-      <div className="mb-8">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-5"
-          style={{ background: "var(--accent-light)" }}>🪄</div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>What service do you want?</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Pick one or more — we&apos;ll show a combined look.
-        </p>
+      <div style={{ marginBottom: 26 }}>
+        <div style={MICRO}>Choose your services</div>
+        <div style={{ marginTop: 10, fontSize: 26, fontWeight: 200, letterSpacing: ".04em" }}>What service do you want?</div>
+        <div style={{ marginTop: 8, fontSize: 13, color: MUTE }}>Pick one or more — we&apos;ll show a combined look.</div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {options.map((o) => {
           const on = pick[o.key];
           return (
@@ -55,36 +61,43 @@ export default function ServiceSelection({
               key={o.key}
               type="button"
               onClick={() => toggle(o.key)}
-              className="rounded-2xl p-4 text-left active:scale-[0.97] transition-all"
-              style={
-                on
-                  ? { background: "linear-gradient(135deg, rgba(143,167,154,0.15), rgba(169,162,184,0.12))", border: "1.5px solid var(--accent)" }
-                  : { background: "var(--bg-card)", border: "1px solid var(--border)" }
-              }
+              style={{
+                borderRadius: 20, padding: 18, textAlign: "left", cursor: "pointer", transition: "all .2s ease",
+                background: on ? "linear-gradient(160deg, rgba(143,167,154,.16), rgba(23,22,20,.72))" : "rgba(23,22,20,.72)",
+                border: `1px solid ${on ? "rgba(143,167,154,.5)" : "rgba(242,239,233,.09)"}`,
+              }}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-2xl">{o.icon}</span>
-                <span className="w-5 h-5 rounded-md flex items-center justify-center text-xs"
-                  style={on ? { background: "var(--accent)", color: "#000" } : { border: "1px solid var(--border-bright)" }}>
-                  {on ? "✓" : ""}
-                </span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: 24 }}>{o.icon}</span>
+                <span style={{
+                  width: 20, height: 20, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, transition: "all .2s ease",
+                  background: on ? ACC : "transparent", color: "#14130F",
+                  border: on ? "0" : "1px solid rgba(242,239,233,.24)",
+                }}>{on ? "✓" : ""}</span>
               </div>
-              <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{o.label}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{o.desc}</p>
+              <div style={{ fontSize: 14, fontWeight: 600, color: on ? "#BFD2C7" : INK }}>{o.label}</div>
+              <div style={{ marginTop: 3, fontSize: 11, color: MUTE }}>{o.desc}</div>
             </button>
           );
         })}
       </div>
 
-      <div className="mt-auto pt-8">
-        <button
-          className="btn-primary"
-          disabled={!anySelected || busy}
-          style={{ opacity: !anySelected || busy ? 0.5 : 1 }}
-          onClick={() => onContinue(pick)}
+      <div style={{ marginTop: 32 }}>
+        <div
+          onClick={() => { if (anySelected && !busy) onContinue(pick); }}
+          style={{
+            height: 56, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: anySelected && !busy ? "pointer" : "default",
+            fontSize: 11, fontWeight: anySelected ? 700 : 400, letterSpacing: ".2em", textTransform: "uppercase",
+            background: anySelected && !busy ? "linear-gradient(160deg, #F4F1EB, #8FA79A 52%, #C7BDAE)" : "rgba(242,239,233,.05)",
+            color: anySelected && !busy ? "#14130F" : "#635E56",
+            border: anySelected && !busy ? "0" : "1px solid rgba(242,239,233,.1)",
+            boxShadow: anySelected && !busy ? "0 16px 34px -14px rgba(143,167,154,.6)" : "none",
+          }}
         >
-          {busy ? "Creating the look…" : "✨ Show my look"}
-        </button>
+          {busy ? "Creating the look…" : anySelected ? "Show my look" : "Select a service"}
+        </div>
       </div>
     </motion.div>
   );

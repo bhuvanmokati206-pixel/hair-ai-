@@ -174,7 +174,10 @@ function ScanFlow() {
         </>
       )}
 
-      <BottomNav />
+      {/* The operator nav only belongs on the entry screen. During the guided
+          scan flow (capture → service → style → preview) it overlapped the
+          flow's own bottom buttons, so the "Show my look" CTA couldn't be tapped. */}
+      {step === "entry" && <BottomNav />}
     </div>
   );
 }

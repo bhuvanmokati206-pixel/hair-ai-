@@ -111,7 +111,27 @@ const HAIR_FACTS = [
   "Hard water buildup on the scalp can make hair feel dry and look dull.",
 ];
 
+const CONCERN_ICONS: Record<string, string> = {
+  "Dryness": "concern-dryness",
+  "Frizz": "concern-frizz",
+  "Hair fall": "concern-hair-fall",
+  "Dandruff": "concern-dandruff",
+  "Oiliness": "concern-oiliness",
+  "Colour damage": "concern-colour-damage",
+  "Breakage": "concern-breakage",
+};
+
+const SCALP_ICONS: Record<string, string> = {
+  "None / Normal": "scalp-none",
+  "Itchy scalp": "scalp-itchy",
+  "Flaky / Dandruff": "scalp-flaky",
+  "Oily scalp": "scalp-oily",
+  "Sensitive scalp": "scalp-sensitive",
+};
+
 function placeholderPhoto(gender: string, key: string, option: string): string {
+  const icon = key === "concern" ? CONCERN_ICONS[option] : key === "scalpCondition" ? SCALP_ICONS[option] : undefined;
+  if (icon) return `/hair-concerns/${icon}.png`;
   const seed = `${gender}-${key}-${option}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return `https://picsum.photos/seed/${seed}/100/100`;
 }

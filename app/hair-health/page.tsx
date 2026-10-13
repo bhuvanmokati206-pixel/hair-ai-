@@ -12,14 +12,17 @@ export default function HairHealthPage() {
     <div className="min-h-screen pb-28" style={{ background: "var(--bg)" }}>
       {/* Header */}
       <div className="px-5 pt-14 pb-6">
-        <h1 className="text-2xl font-black gradient-text-animated">Hair Health</h1>
-        <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
+        <div style={{ fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#7C766C" }}>
+          Hair &amp; scalp
+        </div>
+        <h1 style={{ marginTop: 10, fontSize: 26, fontWeight: 200, letterSpacing: ".04em", color: "#F2EFE9" }}>Hair Health</h1>
+        <p className="text-sm mt-1.5" style={{ color: "#948D82" }}>
           {currentSession?.customer.name
             ? `Analysing ${currentSession.customer.name}'s hair health`
             : "Answer 7 questions for personalised recommendations"}
         </p>
-        <div className="mt-3 inline-flex">
-          <span className="badge-green">✓ Free · No credits needed</span>
+        <div className="mt-3 inline-flex" style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", padding: "5px 10px", borderRadius: 999, background: "rgba(79,214,156,.12)", color: "#4FD69C", border: "1px solid rgba(79,214,156,.3)" }}>
+          ✓ Free · No credits needed
         </div>
       </div>
 

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useStore } from "@/lib/store";
-import { useMsg91Otp } from "@/lib/useMsg91Otp";
 
 type Props = { onContinue: () => void };
+
+const digitsOnly = (p: string) => p.replace(/\D/g, "");
 
 // Gender is no longer collected here — the AI analyser reads it reliably from the
 // scan (front photo), so the manual field was removed. Styling uses the detected
@@ -17,24 +19,52 @@ const phoneIsValid = (p: string) => p.replace(/\D/g, "").length >= 10;
 // OTP master switch. Set NEXT_PUBLIC_OTP_ENABLED=false to skip phone verification.
 const OTP_ON = process.env.NEXT_PUBLIC_OTP_ENABLED !== "false";
 
+// ── NOIR palette (from the imported design) ──────────────────────
+const ACC = "#8FA79A";
+const INK = "#F2EFE9";
+const MUTE = "#948D82";
+const MICRO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".22em", textTransform: "uppercase", color: "#7C766C",
+};
+const LABEL: React.CSSProperties = { fontSize: 10, letterSpacing: ".26em", textTransform: "uppercase", color: MUTE };
+const INPUT: React.CSSProperties = {
+  background: "transparent", border: 0, borderBottom: "1px solid rgba(242,239,233,.2)",
+  color: INK, fontSize: 16, letterSpacing: ".02em", padding: "5px 0 10px", outline: "none", fontFamily: "inherit", width: "100%",
+};
+
 export default function CustomerEntryForm({ onContinue }: Props) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [touched, setTouched] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
 
   const setCurrentCustomer = useStore((s) => s.setCurrentCustomer);
   const setCurrentSession  = useStore((s) => s.setCurrentSession);
-
-  // OTP: a NEW customer's number is verified before the scan starts, so the salon
-  // never collects a wrong number the WhatsApp follow-ups would fail on.
-  const otp = useMsg91Otp();
 
   // Returning customers (already on file for this salon) were verified before — skip
   // OTP for them. null = not checked yet, true = returning, false = new.
   const [returning, setReturning] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(false);
+
+  // A NEW customer's number is verified before the scan starts, so the salon
+  // never collects a wrong number the WhatsApp follow-ups would fail on. The
+  // check happens on a dedicated /otp screen (not inline here) — this just
+  // remembers which number was last cleared there for this tab.
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+
+  // Restore a draft left behind when we sent the operator off to /otp, and
+  // pick up whatever number that screen just verified.
+  useEffect(() => {
+    setVerifiedPhone(sessionStorage.getItem("otp_verified_phone"));
+    const draft = useStore.getState().currentCustomer;
+    if (draft && !draft.id) {
+      setName((n) => n || draft.name);
+      setPhone((p) => p || draft.phone);
+      setAcceptedTerms((a) => a || !!draft.acceptedTerms);
+    }
+  }, []);
 
   const nameOk   = name.trim().length > 0;
   const phoneOk  = phoneIsValid(phone);
@@ -63,7 +93,7 @@ export default function CustomerEntryForm({ onContinue }: Props) {
   }, [phone, phoneOk]);
 
   // New numbers must pass OTP; returning ones are already trusted.
-  const phoneCleared = !OTP_ON || returning === true || otp.verified;
+  const phoneCleared = !OTP_ON || returning === true || (!!verifiedPhone && verifiedPhone === digitsOnly(phone));
   const canContinue = nameOk && phoneOk && phoneCleared;
 
   const handleContinue = () => {
@@ -78,133 +108,101 @@ export default function CustomerEntryForm({ onContinue }: Props) {
     onContinue();
   };
 
+  // Name + phone are in, but this is a new number — save the draft and hand
+  // off to the dedicated OTP screen. It routes back here once "verified".
+  const goVerify = () => {
+    if (!nameOk || !phoneOk) { setTouched(true); return; }
+    setCurrentCustomer({ name: name.trim(), phone: phone.trim(), acceptedTerms });
+    router.push(`/otp?phone=${encodeURIComponent(digitsOnly(phone))}&next=${encodeURIComponent("/scan")}`);
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col min-h-screen px-6 pt-14 pb-10"
-      style={{ background: "var(--bg)" }}
+      transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+      style={{ minHeight: "100vh", background: "var(--bg)", color: INK,
+        display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 26px" }}
     >
-      <div className="mb-8">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-5"
-          style={{ background: "var(--accent-light)" }}>📋</div>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Customer details</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          We&apos;ll save this scan to their profile
-        </p>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 30, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <div style={MICRO}>New Customer</div>
+        <div style={{ marginTop: 8, fontSize: 26, fontWeight: 200, letterSpacing: ".06em" }}>Customer details</div>
+        <div style={{ marginTop: 8, fontSize: 13, color: MUTE }}>We&apos;ll save this scan to their profile</div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div>
-          <label className="text-xs font-semibold mb-1.5 block uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-            Customer name *
+      {/* Card */}
+      <div style={{ borderRadius: 28, padding: "28px 24px 26px", background: "rgba(23,22,20,.78)",
+        border: "1px solid rgba(242,239,233,.09)", boxShadow: "0 40px 80px -30px rgba(0,0,0,.9)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          {/* Name */}
+          <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={LABEL}>Customer name</span>
+            <input type="text" placeholder="e.g. Rahul Sharma" value={name} autoFocus
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleContinue()}
+              style={INPUT} />
+            {touched && !nameOk && <span style={{ fontSize: 11, color: "#E06A5C" }}>Name is required.</span>}
           </label>
-          <input
-            type="text"
-            placeholder="e.g. Rahul Sharma"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleContinue()}
-            autoFocus
-          />
-          {touched && !nameOk && (
-            <p className="text-[11px] mt-1" style={{ color: "var(--danger)" }}>Name is required.</p>
-          )}
-        </div>
 
-        <div>
-          <label className="text-xs font-semibold mb-1.5 block uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-            Mobile number *
-            {returning === true && <span style={{ color: "#4FD69C" }}> ✓ returning customer</span>}
-            {returning === false && otp.verified && <span style={{ color: "#4FD69C" }}> ✓ verified</span>}
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              inputMode="numeric"
-              placeholder="+91 98765 43210"
-              value={phone}
-              disabled={otp.verified}
-              onChange={(e) => { setPhone(e.target.value); otp.reset(); setReturning(null); }}
-              style={{ flex: 1 }}
-            />
-            {/* OTP only for NEW numbers. Returning customers were verified already. */}
-            {returning === false && !otp.verified && (
-              <button type="button"
-                onClick={() => otp.sendCode(phone)}
-                disabled={otp.busy || !phoneOk}
-                className="px-3 rounded-xl text-xs font-bold shrink-0"
-                style={{ background: "var(--bg-subtle)", border: "1px solid var(--border)", color: "var(--text-primary)", opacity: (otp.busy || !phoneOk) ? 0.5 : 1 }}>
-                {otp.sent ? "Resend" : "Send OTP"}
-              </button>
-            )}
-          </div>
-          {returning === false && otp.sent && !otp.verified && (
-            <div className="flex gap-2 mt-2">
-              <input
-                type="tel" inputMode="numeric" placeholder="Enter OTP" value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                maxLength={6} style={{ flex: 1 }}
-              />
-              <button type="button" onClick={() => otp.verifyCode(otpCode)} disabled={otp.busy}
-                className="px-4 rounded-xl text-xs font-bold shrink-0"
-                style={{ background: "var(--accent)", color: "#000", opacity: otp.busy ? 0.5 : 1 }}>
-                Verify
-              </button>
+          {/* Mobile */}
+          <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={LABEL}>
+              Mobile number
+              {returning === true && <span style={{ color: "#4FD69C" }}> · returning ✓</span>}
+              {returning === false && phoneCleared && <span style={{ color: "#4FD69C" }}> · verified ✓</span>}
+            </span>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, borderBottom: "1px solid rgba(242,239,233,.2)", paddingBottom: 10 }}>
+                <span style={{ fontSize: 16, color: ACC, letterSpacing: ".04em" }}>+91</span>
+                <input type="tel" inputMode="numeric" placeholder="98765 43210" value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setReturning(null); }}
+                  style={{ flex: 1, background: "transparent", border: 0, color: INK, fontSize: 16, letterSpacing: ".09em", padding: "5px 0 0", outline: "none", fontFamily: "inherit" }} />
+              </span>
+              {returning === false && !phoneCleared && (
+                <button type="button" onClick={goVerify} disabled={!phoneOk}
+                  style={{ padding: "9px 12px", borderRadius: 12, fontSize: 10, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", flexShrink: 0,
+                    background: "rgba(242,239,233,.05)", border: "1px solid rgba(242,239,233,.14)", color: INK, opacity: !phoneOk ? 0.5 : 1 }}>
+                  Verify number
+                </button>
+              )}
             </div>
-          )}
-          {touched && !phoneOk && (
-            <p className="text-[11px] mt-1" style={{ color: "var(--danger)" }}>Enter a valid 10-digit mobile number.</p>
-          )}
-          {checking && <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Checking…</p>}
-          {returning === true && (
-            <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>Number already on file — no verification needed.</p>
-          )}
-          {otp.error && <p className="text-[11px] mt-1" style={{ color: "var(--danger)" }}>{otp.error}</p>}
-          {returning === false && otp.sent && !otp.verified && !otp.error && (
-            <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>OTP sent to the customer&apos;s phone — ask them for the code.</p>
-          )}
+            {touched && !phoneOk && <span style={{ fontSize: 11, color: "#E06A5C" }}>Enter a valid 10-digit mobile number.</span>}
+            {checking && <span style={{ fontSize: 11, color: "#7C766C" }}>Checking…</span>}
+            {returning === true && <span style={{ fontSize: 11, color: "#7C766C" }}>Number already on file — no verification needed.</span>}
+            {returning === false && phoneOk && !phoneCleared && (
+              <span style={{ fontSize: 11, color: "#7C766C" }}>New number — tap &quot;Verify number&quot; to send a code.</span>
+            )}
+          </label>
+
+          {/* Consent */}
+          <button type="button" className="tap" onClick={() => setAcceptedTerms((v) => !v)} aria-pressed={acceptedTerms}
+            style={{ display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer", width: "100%" }}>
+            <div style={{ width: 19, height: 19, borderRadius: 5, flex: "none", marginTop: 1, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: 11, color: "#171614", transition: "all .3s ease",
+              background: acceptedTerms ? ACC : "transparent",
+              border: `1px solid ${acceptedTerms ? ACC : "rgba(242,239,233,.3)"}` }}>{acceptedTerms ? "✓" : ""}</div>
+            <div style={{ fontSize: 11, lineHeight: 1.65, letterSpacing: ".03em", color: MUTE, textAlign: "left" }}>
+              Customer accepts the <span style={{ color: ACC }}>Terms of Service</span> and consents to receive updates on WhatsApp.
+            </div>
+          </button>
         </div>
 
-        {/* Gender is detected automatically by the AI from the scan — no manual field. */}
-
-        {/* Barber is chosen later, at billing/checkout — not at scan start. */}
-
-        {/* Terms — collected but not mandatory for now. Ticking it also records
-            the messaging consent the review/rebook automation needs. */}
-        <button
-          type="button"
-          onClick={() => setAcceptedTerms((v) => !v)}
-          className="flex items-start gap-2.5 text-left mt-1 active:scale-[0.99] transition-transform"
-        >
-          <span
-            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 text-xs"
-            style={
-              acceptedTerms
-                ? { background: "var(--accent)", color: "#000" }
-                : { background: "var(--bg-subtle)", border: "1px solid var(--border-bright)" }
-            }
-          >
-            {acceptedTerms ? "✓" : ""}
-          </span>
-          <span className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Customer accepts the terms &amp; conditions and consents to receive updates on WhatsApp.
-          </span>
+        {/* Start */}
+        <button type="button" className="tap" onClick={handleContinue}
+          style={{ width: "100%", marginTop: 26, height: 58, borderRadius: 17, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 11, fontWeight: canContinue ? 700 : 400, letterSpacing: ".22em", textTransform: "uppercase",
+            cursor: canContinue ? "pointer" : "default",
+            background: canContinue ? "linear-gradient(160deg, #F4F1EB, #8FA79A 52%, #C7BDAE)" : "rgba(242,239,233,.05)",
+            color: canContinue ? "#14130F" : "#635E56",
+            border: canContinue ? "0" : "1px solid rgba(242,239,233,.1)",
+            boxShadow: canContinue ? "0 16px 34px -14px rgba(143,167,154,.6)" : "none" }}>
+          {nameOk && phoneOk && !phoneCleared ? "Verify the number to continue" : "Begin Scan"}
         </button>
       </div>
 
-      <div className="mt-8">
-        <button
-          className="btn-primary"
-          onClick={handleContinue}
-          disabled={!canContinue}
-          style={{ opacity: canContinue ? 1 : 0.5 }}
-        >
-          {nameOk && phoneOk && !phoneCleared ? "Verify the number to continue" : "Start Scan →"}
-        </button>
-        <p className="text-center mt-3 text-xs" style={{ color: "var(--text-muted)" }}>
-          We never share customer data with third parties
-        </p>
+      <div style={{ marginTop: 22, textAlign: "center", fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: "#4E4941" }}>
+        We never share customer data with third parties
       </div>
     </motion.div>
   );

@@ -7,6 +7,15 @@ import BottomNav from "@/components/BottomNav";
 import LogoutButton from "@/components/LogoutButton";
 import BarberManager from "@/components/BarberManager";
 
+// ── NOIR palette (from the imported design) ──────────────────────
+const INK = "#F2EFE9";
+const MUTE = "#948D82";
+const MICRO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#7C766C",
+};
+const CARD: React.CSSProperties = { borderRadius: 20, background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" };
+
 type Salon = {
   id: string; code: string | null; name: string;
   phone: string | null; email: string | null;
@@ -19,6 +28,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [salon, setSalon] = useState<Salon | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
+  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [saving, setSaving] = useState(false);
@@ -31,6 +41,10 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
       setLoginEmail(user.email ?? "");
+
+      // Role decides whether the Analytics shortcut is shown (admins only).
+      const { data: prof } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      setRole(prof?.role ?? null);
 
       const salonRes = await fetch("/api/salon");
       const salonBody = await salonRes.json();
@@ -77,27 +91,30 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg)", color: INK, paddingBottom: 118 }}>
       {/* Centered identity header */}
-      <div className="px-5 pt-14 pb-6 flex flex-col items-center text-center">
-        <div className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black mb-3"
-          style={{ background: "linear-gradient(135deg, rgba(143,167,154,0.2), rgba(169,162,184,0.15))", border: "2px solid var(--border-accent)", color: "var(--accent)" }}>
+      <div style={{ padding: "60px 24px 22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div style={{ width: 88, height: 88, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 34, fontWeight: 300, marginBottom: 14,
+          background: "linear-gradient(160deg, rgba(143,167,154,.18), rgba(23,22,20,.72))",
+          border: "1px solid rgba(143,167,154,.32)", color: "#BFD2C7" }}>
           {(salon?.name || "S")[0].toUpperCase()}
         </div>
-        <h1 className="text-xl font-black" style={{ color: "var(--text-primary)" }}>{salon?.name ?? "Your Salon"}</h1>
-        <div className="flex items-center gap-2 mt-1">
+        <div style={{ ...MICRO }}>Salon profile</div>
+        <h1 style={{ marginTop: 8, fontSize: 24, fontWeight: 300, letterSpacing: ".01em", color: "#BFD2C7" }}>{salon?.name ?? "Your Salon"}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
           {salon?.code && (
-            <span className="text-[11px] font-mono px-2 py-0.5 rounded-full" style={{ background: "var(--bg-subtle)", color: "var(--text-muted)" }}>{salon.code}</span>
+            <span style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", padding: "3px 9px", borderRadius: 999, background: "rgba(242,239,233,.05)", color: MUTE, border: "1px solid rgba(242,239,233,.1)" }}>{salon.code}</span>
           )}
           {salon?.status && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(143,167,154,0.12)", color: "var(--accent)" }}>{salon.status}</span>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(143,167,154,.14)", color: "#BFD2C7", border: "1px solid rgba(143,167,154,.34)", textTransform: "uppercase", letterSpacing: ".08em" }}>{salon.status}</span>
           )}
         </div>
       </div>
 
       {!salon ? (
-        <div className="px-5">
-          <div className="card p-5 text-center text-xs" style={{ color: "var(--text-muted)" }}>
+        <div style={{ padding: "0 20px" }}>
+          <div style={{ ...CARD, padding: 20, textAlign: "center", fontSize: 12, color: MUTE }}>
             This account isn&apos;t linked to a salon. {loginEmail && `Signed in as ${loginEmail}.`}
           </div>
           <div className="mt-4"><LogoutButton /></div>
@@ -106,57 +123,61 @@ export default function ProfilePage() {
       ) : (
         <>
           {/* Editable details */}
-          <div className="px-5 mb-4">
-            <p className="section-label mb-2">Salon details</p>
-            <div className="card p-5 flex flex-col gap-4">
+          <div style={{ padding: "0 20px", marginBottom: 18 }}>
+            <div style={{ ...MICRO, marginBottom: 12, paddingLeft: 2 }}>Salon details</div>
+            <div style={{ ...CARD, padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
               <Field label="Salon name" value={salon.name} onChange={(v) => set("name", v)} placeholder="e.g. Fish Net Salon" />
               <Field label="Phone number" value={salon.phone ?? ""} onChange={(v) => set("phone", v)} type="tel" placeholder="+91 98765 43210" />
               <Field label="Contact email" value={salon.email ?? ""} onChange={(v) => set("email", v)} type="email" placeholder="salon@example.com" />
               <Field label="Address" value={salon.address_line1 ?? ""} onChange={(v) => set("address_line1", v)} placeholder="Shop / building, street" />
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <Field label="City" value={salon.city ?? ""} onChange={(v) => set("city", v)} placeholder="Bengaluru" />
                 <Field label="Pincode" value={salon.pincode ?? ""} onChange={(v) => set("pincode", v)} type="tel" placeholder="560001" />
               </div>
 
-              {error && <p className="text-[11px] rounded-lg px-3 py-2" style={{ background: "rgba(224,106,92,0.08)", color: "var(--danger)" }}>{error}</p>}
+              {error && <p style={{ fontSize: 11, borderRadius: 10, padding: "8px 12px", background: "rgba(224,106,92,0.1)", border: "1px solid rgba(224,106,92,.28)", color: "#E06A5C" }}>{error}</p>}
 
-              <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+              <button type="button" className="tap" onClick={() => { if (!saving) handleSave(); }} disabled={saving}
+                style={{ width: "100%", height: 52, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                  fontSize: 11, fontWeight: 700, letterSpacing: ".18em", textTransform: "uppercase",
+                  background: "linear-gradient(160deg, #F4F1EB, #8FA79A 52%, #C7BDAE)", color: "#14130F", opacity: saving ? 0.7 : 1 }}>
                 {saving ? "Saving…" : saved ? "✓ Saved" : "Save changes"}
               </button>
             </div>
-            <p className="text-[10px] mt-1.5 px-1" style={{ color: "var(--text-muted)" }}>
+            <p style={{ fontSize: 10, marginTop: 8, paddingLeft: 4, color: MUTE }}>
               Login email ({loginEmail}) is changed separately for security.
             </p>
           </div>
 
           {/* Barbers */}
-          <div className="px-5 mb-4">
+          <div style={{ padding: "0 20px", marginBottom: 18 }}>
             <BarberManager />
           </div>
 
           {/* Navigation */}
-          <div className="px-5 mb-4">
-            <div className="card divide-y" style={{ borderColor: "var(--border)" }}>
+          <div style={{ padding: "0 20px", marginBottom: 18 }}>
+            <div style={{ ...CARD, overflow: "hidden" }}>
               {[
                 { icon: "📅", label: "Appointments", value: "Bookings and schedule", route: "/profile/appointments" },
-                { icon: "📊", label: "Analytics", value: "Revenue, clients & Excel export", route: "/analytics" },
+                { icon: "📊", label: "Analytics", value: "Revenue, clients & Excel export", route: "/analytics", adminOnly: true },
                 { icon: "💬", label: "WhatsApp messages", value: "Review & rebook outbox", route: "/messages" },
-              ].map((row) => (
+              ].filter((row) => !row.adminOnly || role === "salon_owner" || role === "platform_admin").map((row, i) => (
                 <button key={row.label} onClick={() => router.push(row.route)}
-                  className="w-full flex items-center gap-3 p-4 text-left active:scale-[0.99] transition-transform">
+                  className="w-full flex items-center gap-3 p-4 text-left active:scale-[0.99] transition-transform"
+                  style={{ borderTop: i === 0 ? "0" : "1px solid rgba(242,239,233,.07)" }}>
                   <span className="text-xl w-8">{row.icon}</span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{row.label}</p>
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{row.value}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: INK }}>{row.label}</p>
+                    <p style={{ fontSize: 12, color: MUTE }}>{row.value}</p>
                   </div>
-                  <span style={{ color: "var(--text-muted)" }}>›</span>
+                  <span style={{ color: MUTE }}>›</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Logout */}
-          <div className="px-5">
+          <div style={{ padding: "0 20px" }}>
             <LogoutButton />
           </div>
         </>
@@ -171,9 +192,10 @@ function Field({ label, value, onChange, type = "text", placeholder }: {
   label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
 }) {
   return (
-    <div>
-      <label className="text-xs font-semibold uppercase tracking-wide mb-1.5 block" style={{ color: "var(--text-secondary)" }}>{label}</label>
-      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-    </div>
+    <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={MICRO}>{label}</span>
+      <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)}
+        style={{ background: "transparent", border: 0, borderBottom: "1px solid rgba(242,239,233,.18)", color: INK, fontSize: 16, padding: "5px 0 10px", outline: "none", fontFamily: "inherit", width: "100%" }} />
+    </label>
   );
 }

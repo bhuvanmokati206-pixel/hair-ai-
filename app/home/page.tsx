@@ -2,19 +2,24 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 // Cookie-based client. The old singleton in @/lib/supabase keeps its session in
 // localStorage, which the login page no longer writes to — getUser() there
 // returns null and bounces a signed-in user back to /login.
 import { createClient } from "@/lib/supabase/client";
 import { useStore } from "@/lib/store";
 import BottomNav from "@/components/BottomNav";
-import TrendingStrip from "@/components/TrendingStrip";
-import StatCounter from "@/components/StatCounter";
-import InProgressStrip from "@/components/InProgressStrip";
-import BeforeAfterGallery from "@/components/BeforeAfterGallery";
 import { getSalonStats, EMPTY_STATS, type SalonStats } from "@/lib/salonStats";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
+// ── NOIR palette (from the imported design) ────────────────────────────────
+const ACC = "#8FA79A";
+const MUTE = "#948D82";
+const FAINT = "#7C766C";
+
+const micro: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".22em", textTransform: "uppercase", color: FAINT,
+};
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -23,174 +28,56 @@ function getGreeting() {
   return "Good evening";
 }
 
-type Session = {
+// ── In-progress queue (park & resume) ──────────────────────────────
+type InProgress = {
+  id: string;
+  created_at: string;
+  status: string;
+  chosen_style: string | null;
+  service_type: string;
+  customerName: string;
+  barberName: string | null;
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  scanning: "Scanning", choosing: "Choosing", in_progress: "In the chair",
+};
+
+// Recent customers — the last few visits for this salon, resumable or checkout-able.
+type RecentVisit = {
   id: string;
   customer_name: string;
   created_at: string;
-  analysis_json: { bestMatch?: string; hairColor?: string } | null;
+  ended_at: string | null;
+  style: string | null;
 };
 
-// ── Quick action button data ──────────────────────────────────────
-const ACTIONS = [
-  {
-    label: "Upload",
-    tip: "Add from gallery",
-    route: "/scan",
-    color: "#8FA79A",
-    bg: "rgba(143,167,154,0.1)",
-    border: "rgba(143,167,154,0.25)",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M21 15V19C21 20.105 20.105 21 19 21H5C3.895 21 3 20.105 3 19V15"
-          stroke="#8FA79A" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M17 8L12 3L7 8" stroke="#8FA79A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 3V15" stroke="#8FA79A" strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    label: "Analysis",
-    tip: "Scan & match AI",
-    route: "/scan",
-    color: "#A9A2B8",
-    bg: "rgba(169,162,184,0.1)",
-    border: "rgba(169,162,184,0.25)",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3" stroke="#A9A2B8" strokeWidth="1.8"/>
-        <path d="M12 2V4M12 20V22M4.22 4.22L5.64 5.64M18.36 18.36L19.78 19.78M2 12H4M20 12H22M4.22 19.78L5.64 18.36M18.36 5.64L19.78 4.22"
-          stroke="#A9A2B8" strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    label: "Hair Test",
-    tip: "Health & remedies",
-    route: "/hair-health",
-    color: "#4FD69C",
-    bg: "rgba(79,214,156,0.1)",
-    border: "rgba(79,214,156,0.25)",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <path d="M9 3H15" stroke="#4FD69C" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M8 3L6 8C6 8 3 9.5 3 13C3 17.418 7.029 21 12 21C16.971 21 21 17.418 21 13C21 9.5 18 8 18 8L16 3"
-          stroke="#4FD69C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M9 14C9.5 15.5 10.5 16.5 12 16.5C13.5 16.5 14.5 15.5 15 14"
-          stroke="#4FD69C" strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    label: "Customise",
-    tip: "Try new styles",
-    route: "/customize",
-    color: "#C9A15C",
-    bg: "rgba(201,161,92,0.1)",
-    border: "rgba(201,161,92,0.25)",
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-        <circle cx="6" cy="6" r="2.5" stroke="#C9A15C" strokeWidth="1.8"/>
-        <circle cx="6" cy="18" r="2.5" stroke="#C9A15C" strokeWidth="1.8"/>
-        <path d="M8.5 7.5L18.5 17.5M8.5 16.5L12 13M15 10L18.5 6.5" stroke="#C9A15C" strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-] as const;
-
-// ── QuickActions component ────────────────────────────────────────
-function QuickActions({ router }: { router: AppRouterInstance }) {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.13 }}
-      className="px-5 mb-6"
-    >
-      {/* Outer frame */}
-      <div
-        className="rounded-2xl px-4 py-3 flex justify-start items-center gap-4"
-        style={{
-          background: "rgba(143,167,154,0.04)",
-          border: "1.5px solid rgba(143,167,154,0.14)",
-          boxShadow: "inset 0 1px 0 rgba(143,167,154,0.06)",
-        }}
-      >
-        {ACTIONS.map((action, i) => (
-          <div key={action.label} className="flex flex-col items-center gap-1.5">
-            <button
-              onClick={() => router.push(action.route)}
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
-              className="relative flex items-center justify-center active:scale-90 transition-transform overflow-hidden"
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: hoveredIdx === i ? action.bg : "rgba(255,255,255,0.04)",
-                border: `1px solid ${hoveredIdx === i ? action.border : "rgba(255,255,255,0.08)"}`,
-                transition: "background 0.18s, border-color 0.18s",
-                boxShadow: hoveredIdx === i ? `0 0 12px ${action.bg}` : "none",
-              }}
-            >
-              <AnimatePresence mode="wait">
-                {hoveredIdx !== i ? (
-                  <motion.div
-                    key="icon"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.12 }}
-                  >
-                    {action.icon}
-                  </motion.div>
-                ) : (
-                  <motion.span
-                    key="tip"
-                    initial={{ opacity: 0, scale: 0.75 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.75 }}
-                    transition={{ duration: 0.12 }}
-                    className="text-[8px] font-black text-center leading-tight px-1"
-                    style={{ color: action.color }}
-                  >
-                    {action.tip}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
-            {/* Label below button */}
-            <span
-              className="text-[9px] font-semibold tracking-wide"
-              style={{ color: hoveredIdx === i ? action.color : "var(--text-muted)" }}
-            >
-              {action.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
+function elapsed(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
 // ── Main page ─────────────────────────────────────────────────────
 export default function HomePage() {
   const router = useRouter();
   const { profile, setProfile } = useStore();
-  const [sessions, setSessions] = useState<Session[]>([]);
   const [stats, setStats] = useState<SalonStats>(EMPTY_STATS);
   const [salonId, setSalonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [queue, setQueue] = useState<InProgress[]>([]);
+  const [recent, setRecent] = useState<RecentVisit[]>([]);
 
   const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
 
-  // Re-pull the counters after a checkout, so "in session" drops and "completed"
-  // climbs without a full page reload.
-  const refreshStats = useCallback(async () => {
-    if (!salonId) return;
-    setStats(await getSalonStats(createClient(), salonId));
-  }, [salonId]);
+  const loadQueue = useCallback(async () => {
+    try {
+      const res = await fetch("/api/visit/in-progress");
+      const body = await res.json();
+      if (res.ok) setQueue(body.visits ?? []);
+    } catch { /* queue stays empty */ }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -199,13 +86,12 @@ export default function HomePage() {
       if (skipAuth) {
         setProfile({ id: "demo", salon_name: "Demo Salon", city: "", plan_tier: "free" });
         setLoading(false);
+        void loadQueue();
         return;
       }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
 
-      // The salon name lives on `salons`, reached through the user's profile.
-      // profiles holds role + salon_id, not the salon's own details.
       const { data: p } = await supabase
         .from("profiles")
         .select("id, role, salon_id, full_name, salons(name, city)")
@@ -222,214 +108,206 @@ export default function HomePage() {
         plan_tier: "free",
       });
 
-      // Platform admins are not scoped to a salon, so per-salon counts do not
-      // apply to them — /admin shows the cross-salon view instead.
       if (!p.salon_id) { setLoading(false); return; }
       setSalonId(p.salon_id);
 
-      // Visits, not customer_sessions — that table never existed in this schema.
-      const [{ data: recent }, salonStats] = await Promise.all([
+      const [salonStats, { data: recentRows }] = await Promise.all([
+        getSalonStats(supabase, p.salon_id),
         supabase
           .from("visits")
-          .select("id, created_at, analysis, chosen_style, customers(name)")
+          .select("id, created_at, ended_at, chosen_style, analysis, customers(name)")
           .eq("salon_id", p.salon_id)
           .order("created_at", { ascending: false })
           .limit(5),
-        getSalonStats(supabase, p.salon_id),
       ]);
-
-      setSessions(
-        (recent ?? []).map((v) => {
+      setStats(salonStats);
+      setRecent(
+        (recentRows ?? []).map((v) => {
           const cust = v.customers as unknown as { name: string | null } | null;
+          const analysis = v.analysis as { bestMatch?: string } | null;
           return {
             id: v.id,
             customer_name: cust?.name ?? "Walk-in",
             created_at: v.created_at,
-            analysis_json: v.analysis,
+            ended_at: v.ended_at,
+            style: v.chosen_style ?? analysis?.bestMatch ?? null,
           };
-        }) as Session[]
+        })
       );
-      setStats(salonStats);
       setLoading(false);
+      void loadQueue();
     })();
-  }, [router, setProfile]);
+  }, [router, setProfile, skipAuth, loadQueue]);
 
   const salonName = profile?.salon_name ?? "Salon";
+  const activeCount = queue.length;
+
+  // 4 stat cards — the NOIR dashboard grid, mapped onto live salon stats.
+  const statCards = [
+    {
+      label: "Completed customers",
+      value: stats.completed,
+      note: stats.today > 0 ? `+${stats.today} today` : "None today yet",
+      col: "#F2EFE9", live: false, small: false,
+    },
+    {
+      label: "In session",
+      value: stats.inSession,
+      note: stats.inSession > 0 ? "Active now" : "Nobody in the chair",
+      col: "#BFD2C7", live: stats.inSession > 0, small: false,
+    },
+    {
+      label: "Average rating",
+      value: stats.averageRating ?? "—",
+      note: stats.ratingCount > 0 ? `Based on ${stats.ratingCount} reviews` : "No reviews yet",
+      col: "#C7BDAE", live: false, small: false,
+    },
+    {
+      label: "Top style",
+      value: stats.topStyle ?? "None yet",
+      note: stats.topStyle ? "Most chosen" : "—",
+      col: "#A9A2B8", live: false, small: true,
+    },
+  ];
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen" style={{ background: "var(--bg)", color: "#F2EFE9" }}>
+      <div style={{ paddingBottom: 118 }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}>
 
-      {/* Header */}
-      <div className="px-5 pt-14 pb-5">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center justify-between">
+          {/* Header */}
+          <div style={{ padding: "60px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14 }}>
             <div>
-              <p className="text-xs font-semibold tracking-wider uppercase" style={{ color: "var(--text-muted)" }}>
-                {getGreeting()}
-              </p>
-              <h1 className="text-2xl font-black mt-0.5 gradient-text-animated">{salonName}</h1>
+              <div style={micro}>{getGreeting()}</div>
+              <div style={{ marginTop: 9, fontSize: 24, fontWeight: 600, letterSpacing: "-.01em", color: "#BFD2C7" }}>{salonName}</div>
             </div>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-              style={{ background: "rgba(143,167,154,0.08)", border: "1px solid rgba(143,167,154,0.15)" }}>
-              ✂️
+            <button type="button" className="tap" onClick={() => router.push("/profile")} aria-label="Profile"
+              style={{ width: 44, height: 44, flex: "none", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(143,167,154,.1)", border: "1px solid rgba(143,167,154,.32)" }}>
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke={ACC} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="6" cy="6.5" r="2.6" /><circle cx="6" cy="17.5" r="2.6" /><path d="M8.3 8.2 19 19" /><path d="M8.3 15.8 19 5" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div style={{ padding: "22px 20px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Hero — Total clients */}
+            <div style={{ borderRadius: 20, padding: "20px 18px", background: "linear-gradient(160deg, rgba(143,167,154,.09), rgba(23,22,20,.72))", border: "1px solid rgba(143,167,154,.2)" }}>
+              <div style={micro}>Total clients</div>
+              <div style={{ marginTop: 10, fontSize: 40, fontWeight: 700, letterSpacing: "-.02em", color: "#BFD2C7" }}>
+                {loading ? "—" : stats.totalCustomers}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12, color: MUTE }}>{stats.totalCustomers > 0 ? "On your books" : "No clients yet"}</div>
+            </div>
+
+            {/* 2×2 grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {statCards.map((c) => (
+                <div key={c.label} style={{ borderRadius: 20, padding: "18px 16px", background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ ...micro, letterSpacing: ".18em" }}>{c.label}</span>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.live ? ACC : "transparent", boxShadow: c.live ? `0 0 10px ${ACC}` : "none" }} />
+                  </div>
+                  <div style={{ marginTop: 10, fontWeight: 700, letterSpacing: "-.02em", color: c.col, fontSize: c.small ? 21 : 34, lineHeight: 1.1 }}>
+                    {loading ? "—" : c.value}
+                  </div>
+                  <div style={{ marginTop: 7, fontSize: 11, color: MUTE }}>{c.note}</div>
+                </div>
+              ))}
             </div>
           </div>
+
+          {/* In progress */}
+          <div style={{ padding: "26px 20px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 13 }}>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>In progress</div>
+              <div style={{ padding: "4px 9px", borderRadius: 7, background: "rgba(143,167,154,.14)", border: "1px solid rgba(143,167,154,.34)", fontSize: 10, fontWeight: 600, color: "#BFD2C7" }}>
+                {activeCount} active
+              </div>
+            </div>
+
+            {activeCount === 0 ? (
+              <div style={{ borderRadius: 18, padding: "22px 16px", textAlign: "center", background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: MUTE }}>No one in progress</div>
+                <div style={{ marginTop: 4, fontSize: 11, color: FAINT }}>Tap New Scan below to start a customer</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {queue.map((q) => (
+                  <div key={q.id} style={{ borderRadius: 18, padding: "16px 16px 15px", background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600 }}>{q.customerName}</div>
+                      <div style={{ padding: "3px 8px", borderRadius: 7, fontSize: 10, fontWeight: 600, background: "rgba(143,167,154,.16)", color: "#BFD2C7" }}>
+                        {STATUS_LABEL[q.status] ?? q.status}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 11, color: MUTE }}>
+                      {q.chosen_style ?? "no style yet"}{q.barberName ? ` · ${q.barberName}` : ""} · {elapsed(q.created_at)}
+                    </div>
+                    <div style={{ marginTop: 13, display: "flex", gap: 9 }}>
+                      <button type="button" className="tap" onClick={() => router.push(`/scan?resume=${q.id}`)}
+                        style={{ flex: 1, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(242,239,233,.04)", border: "1px solid rgba(242,239,233,.12)", fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: MUTE }}>
+                        Open
+                      </button>
+                      <button type="button" className="tap" onClick={() => router.push(`/bill/${q.id}`)}
+                        style={{ flex: 1, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(143,167,154,.14)", border: "1px solid rgba(143,167,154,.4)", fontSize: 10, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "#BFD2C7" }}>
+                        Checkout
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent customers — resume an unfinished scan or check one out */}
+          <div style={{ padding: "26px 20px 0" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 13 }}>Recent customers</div>
+
+            {loading ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ height: 78, borderRadius: 18, background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }} />
+                ))}
+              </div>
+            ) : recent.length === 0 ? (
+              <div style={{ borderRadius: 18, padding: "22px 16px", textAlign: "center", background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: MUTE }}>No customers yet</div>
+                <div style={{ marginTop: 4, fontSize: 11, color: FAINT }}>Completed and in-progress scans show up here</div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {recent.map((r) => {
+                  const done = !!r.ended_at;
+                  return (
+                    <div key={r.id} style={{ borderRadius: 18, padding: "16px 16px 15px", background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>{r.customer_name}</div>
+                        <div style={{ padding: "3px 8px", borderRadius: 7, fontSize: 10, fontWeight: 600, background: done ? "rgba(242,239,233,.08)" : "rgba(143,167,154,.16)", color: done ? MUTE : "#BFD2C7" }}>
+                          {done ? "Completed" : "In session"}
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 11, color: MUTE }}>
+                        {r.style ?? "no style yet"} · {new Date(r.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                      <div style={{ marginTop: 13, display: "flex", gap: 9 }}>
+                        <button type="button" className="tap" onClick={() => router.push(`/scan?resume=${r.id}`)}
+                          style={{ flex: 1, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(242,239,233,.04)", border: "1px solid rgba(242,239,233,.12)", fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: MUTE }}>
+                          Continue
+                        </button>
+                        <button type="button" className="tap" onClick={() => router.push(`/bill/${r.id}`)}
+                          style={{ flex: 1, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "rgba(143,167,154,.14)", border: "1px solid rgba(143,167,154,.4)", fontSize: 10, fontWeight: 600, letterSpacing: ".12em", textTransform: "uppercase", color: "#BFD2C7" }}>
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
-
-      {/* Counters — derived live from `visits`, so they move the moment a scan
-          is saved rather than tracking a stored running total. */}
-      <div className="px-5 mb-4">
-        {/* Total clients on the books — the salon's headline number, so it gets
-            a full-width card above the 2×2 grid. */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="mb-3"
-        >
-          <StatCounter
-            label="Total clients"
-            value={stats.totalCustomers}
-            sub={stats.totalCustomers > 0 ? "On your books" : "No clients yet"}
-            accent="#8FA79A"
-            loading={loading}
-          />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="grid grid-cols-2 gap-3"
-        >
-          <StatCounter
-            label="Completed customers"
-            value={stats.completed}
-            sub={stats.today > 0 ? `+${stats.today} today` : "None today yet"}
-            accent="#8FA79A"
-            loading={loading}
-          />
-          <StatCounter
-            label="In session"
-            value={stats.inSession}
-            sub={stats.inSession > 0 ? "Active now" : "Nobody in the chair"}
-            accent="#4FD69C"
-            live={stats.inSession > 0}
-            loading={loading}
-          />
-          <StatCounter
-            label="Average rating"
-            value={stats.averageRating ?? "—"}
-            sub={stats.ratingCount > 0 ? `Based on ${stats.ratingCount} reviews` : "No reviews yet"}
-            accent="#C9A15C"
-            loading={loading}
-          />
-          <StatCounter
-            label="Top style"
-            value={stats.topStyle ?? "None yet"}
-            sub={stats.topStyle ? "Most chosen" : undefined}
-            accent="#A9A2B8"
-            loading={loading}
-          />
-        </motion.div>
-      </div>
-
-      {/* Park-and-resume queue. Hidden when empty. */}
-      <InProgressStrip onChange={refreshStats} />
-
-      {/* Quick actions row */}
-      <QuickActions router={router} />
-
-      {/* Quick scan CTA */}
-      <div className="px-5 mb-6">
-        <motion.button
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.18 }}
-          onClick={() => router.push("/scan")}
-          className="w-full p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, rgba(143,167,154,0.12) 0%, rgba(169,162,184,0.08) 100%)",
-            border: "1px solid rgba(143,167,154,0.2)",
-            boxShadow: "0 0 24px rgba(143,167,154,0.08)",
-          }}
-          whileTap={{ scale: 0.97 }}
-        >
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: "linear-gradient(to right, transparent 0%, rgba(143,167,154,0.03) 50%, transparent 100%)",
-          }} />
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #8FA79A, #6E8778)", boxShadow: "0 0 14px rgba(143,167,154,0.4)" }}>
-            <span className="text-xl">📷</span>
-          </div>
-          <div className="text-left flex-1">
-            <p className="font-bold text-base" style={{ color: "var(--text-primary)" }}>New customer scan</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>4-angle AI analysis · 60 seconds</p>
-          </div>
-          <span className="text-xl" style={{ color: "var(--accent)" }}>›</span>
-        </motion.button>
-      </div>
-
-      {/* Trending */}
-      <div className="mb-6">
-        <div className="px-5 mb-3 flex items-center justify-between">
-          <h2 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>🔥 Trending today</h2>
-          <span className="badge-blue">Live</span>
-        </div>
-        <div className="px-5">
-          <TrendingStrip />
-        </div>
-      </div>
-
-      {/* Recent customers */}
-      <div className="px-5 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-sm" style={{ color: "var(--text-primary)" }}>Recent customers</h2>
-          <p className="section-label">Today</p>
-        </div>
-        {loading ? (
-          <div className="flex flex-col gap-3">
-            {[1, 2, 3].map((i) => <div key={i} className="skeleton h-16 rounded-2xl" />)}
-          </div>
-        ) : sessions.length === 0 ? (
-          <div className="rounded-2xl p-6 text-center"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-            <p className="text-3xl mb-2">👤</p>
-            <p className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>No scans yet today</p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Tap "New customer scan" to get started</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {sessions.map((s, i) => (
-              <motion.div
-                key={s.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
-                onClick={() => router.push("/saved")}
-                className="rounded-2xl p-4 flex items-center gap-3 cursor-pointer active:opacity-75"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
-                  style={{ background: "rgba(143,167,154,0.1)", border: "1px solid rgba(143,167,154,0.2)", color: "var(--accent)" }}>
-                  {s.customer_name[0].toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate" style={{ color: "var(--text-primary)" }}>{s.customer_name}</p>
-                  <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-                    {s.analysis_json?.bestMatch ?? "Analysis complete"} · {new Date(s.created_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
-                <span style={{ color: "var(--text-muted)", fontSize: 18 }}>›</span>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Before & after — real customer transformations with their reviews */}
-      <BeforeAfterGallery salonId={salonId} />
 
       <BottomNav />
     </div>

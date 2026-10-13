@@ -27,15 +27,37 @@ export const TEMPLATES: Record<string, TemplateDef> = {
     note: "Keep it tied to the specific visit (style + barber) or Meta reclassifies it as Marketing.",
   },
 
-  // Rebook — persuades a new visit, so it is MARKETING by definition. Header
-  // image = the customer's previous generated look.
+  // Rebook — 45-day sequel retention message with side-by-side transformation header.
   rebook_reminder: {
     name: "rebook_reminder",
     category: "MARKETING",
     language: "en",
-    body: "Hi {{1}}, it's been a while since your {{2}} at {{3}}! Ready for a fresh look? Reply BOOK to grab a slot. ✂️",
-    params: ["customer name", "style", "salon"],
+    body: `Bro... your haircut is 45 days old 💀✂️
+
+We’re not saying it’s bad...
+we’re just saying it’s probably ready for a sequel. 👀🔥
+
+Remember that fresh look you walked out with last time?
+That was Chapter 1.
+Now it’s time for the next upgrade. 😉
+
+Don’t wait till your hair starts making decisions for you 😂
+
+Reply "BOOK" and we'll get you a slot. ✂️
+
+— {{1}} —
+LET’S GET YOU LOOKING FRESH AGAIN.`,
+    params: ["salon"],
     hasHeaderImage: true,
+  },
+
+  // Booking confirmation — sent immediately upon appointment booking.
+  booking_confirmation: {
+    name: "booking_confirmation",
+    category: "UTILITY",
+    language: "en",
+    body: "Booking Confirmed! ✂️ Hi {{1}}, your appointment at {{2}} with {{3}} for {{4}} is set for {{5}}. Address: {{6}}. Reply CANCEL or RESCHEDULE anytime.",
+    params: ["customer name", "salon", "barber", "service", "date/time", "address"],
   },
 };
 
@@ -45,3 +67,4 @@ export function renderTemplate(templateName: string, bodyParams: string[]): stri
   if (!tpl) return `[${templateName}] ${bodyParams.join(" · ")}`;
   return tpl.body.replace(/\{\{(\d+)\}\}/g, (_, n) => bodyParams[Number(n) - 1] ?? `{{${n}}}`);
 }
+

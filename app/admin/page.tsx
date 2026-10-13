@@ -11,10 +11,10 @@ import LogoutButton from "@/components/LogoutButton";
 export const dynamic = "force-dynamic";
 
 const STATUS_COLORS: Record<string, string> = {
-  active:    "#16A34A",
-  trial:     "#D97706",
-  suspended: "#E5484D",
-  cancelled: "#6B7280",
+  active:    "#4FD69C",
+  trial:     "#C9A15C",
+  suspended: "#E06A5C",
+  cancelled: "#7C766C",
 };
 
 export default async function AdminPage() {
@@ -38,13 +38,13 @@ export default async function AdminPage() {
   const activeCount = salonRows.filter((s) => s.status === "active").length;
 
   return (
-    <div className="min-h-screen pb-16" style={{ background: "var(--bg)" }}>
-      <div className="px-5 pt-12 pb-5">
-        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="min-h-screen pb-16" style={{ background: "var(--bg)", color: "#F2EFE9" }}>
+      <div className="px-5 pt-14 pb-5">
+        <div style={{ fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#7C766C" }}>
           Platform admin
-        </p>
-        <h1 className="text-2xl font-black mt-1" style={{ color: "var(--text-primary)" }}>Salons</h1>
-        <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+        </div>
+        <h1 style={{ marginTop: 10, fontSize: 26, fontWeight: 200, letterSpacing: ".04em", color: "#BFD2C7" }}>Salons</h1>
+        <p className="text-xs mt-1.5" style={{ color: "#948D82" }}>
           {salonRows.length} total · {activeCount} active · signed in as {profile.email}
         </p>
       </div>
@@ -52,28 +52,28 @@ export default async function AdminPage() {
       <div className="px-5 flex flex-col gap-2 mb-8">
         {salonRows.length === 0 ? (
           <div className="rounded-2xl p-6 text-center text-xs"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+            style={{ background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)", color: "#948D82" }}>
             No salons yet.
           </div>
         ) : (
           salonRows.map((s) => (
             <Link key={s.id} href={`/admin/${s.id}`}
               className="rounded-2xl p-4 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform"
-              style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+              style={{ background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" }}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)" }}>{s.name}</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: "#F2EFE9" }}>{s.name}</p>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: `${STATUS_COLORS[s.status] ?? "#6B7280"}1A`, color: STATUS_COLORS[s.status] ?? "#6B7280" }}>
+                    style={{ background: `${STATUS_COLORS[s.status] ?? "#7C766C"}22`, color: STATUS_COLORS[s.status] ?? "#7C766C", textTransform: "uppercase", letterSpacing: ".06em" }}>
                     {s.status}
                   </span>
                 </div>
-                <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[11px] mt-1" style={{ color: "#948D82" }}>
                   <span className="font-mono">{s.code ?? "—"}</span>
                   {s.city ? ` · ${s.city}` : ""} · {custBySalon[s.id] ?? 0} customers · {visitBySalon[s.id] ?? 0} scans
                 </p>
               </div>
-              <span className="text-lg shrink-0" style={{ color: "var(--text-muted)" }}>›</span>
+              <span className="text-lg shrink-0" style={{ color: "#7C766C" }}>›</span>
             </Link>
           ))
         )}

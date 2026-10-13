@@ -139,7 +139,7 @@ export async function enqueuePostVisitMessages(params: {
       templateName: "rebook_reminder",
       sendAt: rebookAt,
       to: params.to,
-      bodyParams: [params.customerName, params.styleName, params.salonName],
+      bodyParams: [params.salonName],
       headerImageUrl: params.heroImageUrl,
     });
   } else {
@@ -147,6 +147,38 @@ export async function enqueuePostVisitMessages(params: {
   }
 
   return { review, rebook };
+}
+
+/**
+ * Queues a booking confirmation message to send immediately.
+ */
+export async function enqueueBookingConfirmation(params: {
+  salonId: string;
+  customerId: string;
+  to: string;
+  customerName: string;
+  salonName: string;
+  barberName?: string;
+  serviceName?: string;
+  bookingDateTime: string;
+  salonAddress?: string;
+}) {
+  return enqueueMessage({
+    salonId: params.salonId,
+    customerId: params.customerId,
+    type: "booking_confirm",
+    templateName: "booking_confirmation",
+    sendAt: new Date(),
+    to: params.to,
+    bodyParams: [
+      params.customerName,
+      params.salonName,
+      params.barberName ?? "our stylist",
+      params.serviceName ?? "Haircut",
+      params.bookingDateTime,
+      params.salonAddress ?? "Main Salon Suite",
+    ],
+  });
 }
 
 // ── Dispatch ───────────────────────────────────────────────────────────────────

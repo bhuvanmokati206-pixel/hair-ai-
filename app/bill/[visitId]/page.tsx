@@ -12,6 +12,7 @@ import {
   computeBill, rupees, parseRupeesToPaise,
   type BillLine, type PaymentMethod,
 } from "@/lib/billing";
+import WhatsAppPreviewModal from "@/components/WhatsAppPreviewModal";
 
 type Barber = { id: string; name: string };
 type Visit = { customerName: string; customerPhone: string | null };
@@ -39,6 +40,10 @@ export default function BillingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invoiceNo, setInvoiceNo] = useState<string | null>(null); // set once finalized
+
+  // WhatsApp Review Trigger Modal state
+  const [reviewPreview, setReviewPreview] = useState<{ text: string; phone: string; name: string } | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -87,7 +92,7 @@ export default function BillingPage() {
 
       // 2. Complete the visit — sets ended_at, status=completed, queues WhatsApp
       //    (the barber is already set, so the review message names them).
-      await fetch("/api/visit/checkout", {
+      const checkoutRes = await fetch("/api/visit/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visitId,
@@ -95,6 +100,15 @@ export default function BillingPage() {
           ...(review.trim() ? { customerReview: review.trim() } : {}),
         }),
       });
+      const checkoutData = await checkoutRes.json();
+      if (checkoutData.reviewPreviewText) {
+        setReviewPreview({
+          text: checkoutData.reviewPreviewText,
+          phone: checkoutData.customerPhone ?? visit?.customerPhone ?? "919876543210",
+          name: checkoutData.customerName ?? visit?.customerName ?? "Valued Customer",
+        });
+        setModalOpen(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not finalize");
     } finally {
@@ -132,7 +146,28 @@ export default function BillingPage() {
           <Totals totals={totals} />
           <p className="text-center text-[10px] mt-4" style={{ color: "var(--text-muted)" }}>Thank you for visiting {salonName}</p>
         </div>
-        <button onClick={() => router.replace("/home")} className="btn-primary mt-5 w-full max-w-sm">Done</button>
+
+        {reviewPreview && (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="w-full max-w-sm mt-3 py-3 px-4 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center gap-2 hover:bg-emerald-500/20 active:scale-95 transition-all shadow"
+          >
+            <span>📱 View Trigger 1: WhatsApp Review Request</span>
+          </button>
+        )}
+
+        <button onClick={() => router.replace("/home")} className="btn-primary mt-3 w-full max-w-sm">Done</button>
+
+        {reviewPreview && (
+          <WhatsAppPreviewModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            triggerType="review"
+            customerName={reviewPreview.name}
+            phone={reviewPreview.phone}
+            messageText={reviewPreview.text}
+          />
+        )}
       </div>
     );
   }

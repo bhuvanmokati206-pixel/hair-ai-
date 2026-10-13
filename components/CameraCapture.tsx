@@ -13,6 +13,22 @@ type Props = {
   onComplete: (photos: CapturedPhoto[]) => void;
 };
 
+// ── NOIR palette (from the imported design) ──────────────────────
+const ACC = "#8FA79A";
+const INK = "#F2EFE9";
+const MUTE = "#948D82";
+const MICRO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".22em", textTransform: "uppercase", color: "#7C766C",
+};
+const SAGE_BTN: React.CSSProperties = {
+  background: "linear-gradient(160deg, #F4F1EB, #8FA79A 52%, #C7BDAE)", color: "#14130F",
+  boxShadow: "0 16px 34px -14px rgba(143,167,154,.6), inset 0 1px 0 rgba(255,255,255,.4)",
+};
+const GHOST_BTN: React.CSSProperties = {
+  background: "rgba(242,239,233,.05)", color: INK, border: "1px solid rgba(242,239,233,.14)",
+};
+
 const ANGLES = [
   {
     id: "front",
@@ -61,7 +77,9 @@ export default function CameraCapture({ onComplete }: Props) {
   const [tick, setTick]               = useState(false); // brief ✓ after capture
   const [videoReady, setVideoReady]   = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [flipError, setFlipError]     = useState<string | null>(null); // transient toast in camera view
   const [pendingStream, setPendingStream] = useState<MediaStream | null>(null);
+  const [facingMode, setFacingMode]   = useState<"user" | "environment">("user");
   // Camera only works in a secure context (https / localhost). On plain-HTTP
   // network access (phone over LAN) it is blocked by the browser — so we make
   // Upload the primary action there instead of the camera.
@@ -96,6 +114,7 @@ export default function CameraCapture({ onComplete }: Props) {
     setError(null);
     setCurrentAngle(0);
     setPhotos([]);
+    setFacingMode("user");
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setError(
@@ -108,7 +127,7 @@ export default function CameraCapture({ onComplete }: Props) {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: "user", width: { ideal: 2560 }, height: { ideal: 1440 } },
         audio: false,
       });
       setStep("camera");
@@ -122,6 +141,55 @@ export default function CameraCapture({ onComplete }: Props) {
       );
     }
   }, []);
+
+  const flipCamera = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) return;
+    const nextFacingMode = facingMode === "user" ? "environment" : "user";
+    const base = { width: { ideal: 2560 }, height: { ideal: 1440 } };
+    const open = (v: MediaTrackConstraints) =>
+      navigator.mediaDevices.getUserMedia({ video: { ...base, ...v }, audio: false });
+
+    // Remember the current lens's deviceId, then RELEASE it — some phones won't
+    // hand over the other camera while the first is still live.
+    const curDeviceId = streamRef.current?.getVideoTracks?.()[0]?.getSettings?.().deviceId;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setVideoReady(false);
+
+    // `exact` forces the switch — a plain `ideal` facingMode just re-hands the
+    // camera that's already open, so the flip appeared to do nothing.
+    let stream: MediaStream | null = null;
+    try {
+      stream = await open({ facingMode: { exact: nextFacingMode } });
+    } catch {
+      // No camera matches that facing (or exact unsupported) — pick a *different*
+      // videoinput device by id.
+      try {
+        const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+        const other = cams.find((c) => c.deviceId && c.deviceId !== curDeviceId);
+        if (other) stream = await open({ deviceId: { exact: other.deviceId } });
+      } catch { /* fall through */ }
+    }
+
+    if (!stream) {
+      // Only one camera (e.g. a laptop) — reopen the current lens so the preview
+      // keeps working, and flag it.
+      try { stream = await open({ facingMode }); } catch { /* ignore */ }
+      if (stream) {
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); }
+        setVideoReady(true);
+      }
+      setFlipError("This device has only one camera.");
+      setTimeout(() => setFlipError(null), 2500);
+      return;
+    }
+
+    streamRef.current = stream;
+    if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play().catch(() => {}); }
+    setFacingMode(nextFacingMode);
+    setVideoReady(true);
+  }, [facingMode]);
 
   // ── Capture one photo, then advance angle ──────────────────────
   const capturePhoto = useCallback(() => {
@@ -138,14 +206,14 @@ export default function CameraCapture({ onComplete }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Mirror for front/side shots
-    if (angle.id !== "back") {
+    // Mirror the user-facing lens so the saved image matches the preview.
+    if (facingMode === "user") {
       ctx.translate(w, 0);
       ctx.scale(-1, 1);
     }
     ctx.drawImage(video, 0, 0, w, h);
 
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
     const base64  = dataUrl.split(",")[1];
     if (!base64 || base64.length < 500) return;
 
@@ -176,10 +244,11 @@ export default function CameraCapture({ onComplete }: Props) {
         if (currentAngle === 2 && streamRef.current) {
           const oldStream = streamRef.current;
           navigator.mediaDevices
-            .getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+            .getUserMedia({ video: { facingMode: "environment", width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false })
             .then((newStream) => {
               oldStream.getTracks().forEach((t) => t.stop());
-              streamRef.current = newStream;
+                streamRef.current = newStream;
+                setFacingMode("environment");
               if (videoRef.current) {
                 videoRef.current.srcObject = newStream;
                 videoRef.current.play().catch(() => {});
@@ -201,7 +270,7 @@ export default function CameraCapture({ onComplete }: Props) {
         onComplete(newPhotos);
       }, 600);
     }
-  }, [angle.id, currentAngle, photos, videoReady, stopCamera, onComplete]);
+  }, [angle.id, currentAngle, facingMode, photos, videoReady, stopCamera, onComplete]);
 
   // ── Upload flow — pick all 4 photos at once in a single picker ────
   // Browsers block re-opening a file picker programmatically (not a user
@@ -213,7 +282,13 @@ export default function CameraCapture({ onComplete }: Props) {
   // Small max dimension keeps 4 base64 images well under Groq's request limit.
   // Bigger, sharper input → sharper output. The model can't render detail it was
   // never given. 1280/0.82 keeps payloads reasonable while lifting quality.
-  const compressImage = async (file: File, maxDim = 1280, quality = 0.82): Promise<string> => {
+  // LOCAL-FIRST full resolution: nano-banana needs facial detail to LOCK the face,
+  // and full-res photos preserve it (same prompt that changed the face at 1280 keeps
+  // it at full res). 4096/0.95 is effectively full quality for phone photos. This
+  // only fits when the app runs on a local/LAN dev server (no request-size cap) —
+  // the Vercel-hosted build will 413 on generation with images this large. To run
+  // full-res on Vercel too, switch the generation to storage URLs.
+  const compressImage = async (file: File, maxDim = 4096, quality = 0.95): Promise<string> => {
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     let width = bitmap.width;
     let height = bitmap.height;
@@ -261,34 +336,31 @@ export default function CameraCapture({ onComplete }: Props) {
     [onComplete]
   );
 
-  // ── HOME SCREEN ────────────────────────────────────────────────
+  // ── HOME SCREEN (NOIR intro) ───────────────────────────────────
   if (step === "home") {
     return (
-      <div className="flex flex-col min-h-screen px-4 pb-32" style={{ background: "var(--bg)" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg)", color: INK, padding: "0 24px 130px",
+        display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {/* Header */}
-        <div className="pt-12 pb-6 text-center">
-          <h1 className="text-3xl font-black gradient-text-animated mb-1">Scan Hair</h1>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>4-angle AI analysis · 60 seconds</p>
+        <div style={{ textAlign: "center", marginBottom: 30 }}>
+          <div style={MICRO}>Biometric Capture</div>
+          <div style={{ marginTop: 10, fontSize: 28, fontWeight: 200, letterSpacing: ".08em" }}>Face Scan</div>
+          <div style={{ marginTop: 8, fontSize: 13, color: MUTE }}>4 angles · about 60 seconds</div>
         </div>
 
-        {/* Instruction card */}
-        <div className="rounded-3xl p-5 mb-6"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
-          <p className="font-bold text-sm mb-4" style={{ color: "var(--text-primary)" }}>We&apos;ll take 4 quick photos:</p>
-          <div className="space-y-3">
+        {/* Angle list card */}
+        <div style={{ borderRadius: 26, padding: "24px 22px", background: "rgba(23,22,20,.78)",
+          border: "1px solid rgba(242,239,233,.09)", boxShadow: "0 40px 80px -30px rgba(0,0,0,.9)" }}>
+          <div style={{ ...MICRO, marginBottom: 18 }}>We&apos;ll capture</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {ANGLES.map((a, i) => (
-              <div key={a.id} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                  style={{ background: a.color + "18", border: `1px solid ${a.color}40` }}>
-                  {a.emoji}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{a.label}</p>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{a.sub}</p>
-                </div>
-                <div className="ml-auto w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}>
-                  {i + 1}
+              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 30, height: 30, flex: "none", borderRadius: 9, display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 12, fontWeight: 600, background: "rgba(143,167,154,.1)",
+                  border: "1px solid rgba(143,167,154,.28)", color: ACC }}>{i + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{a.label}</div>
+                  <div style={{ marginTop: 2, fontSize: 11, color: MUTE }}>{a.sub}</div>
                 </div>
               </div>
             ))}
@@ -296,144 +368,160 @@ export default function CameraCapture({ onComplete }: Props) {
         </div>
 
         {error && (
-          <div className="rounded-2xl p-3 text-sm text-center mb-4"
-            style={{ background: "rgba(224,106,92,0.1)", border: "1px solid rgba(224,106,92,0.3)", color: "#E06A5C" }}>
-            {error}
-          </div>
+          <div style={{ marginTop: 16, borderRadius: 14, padding: "12px 14px", fontSize: 12, textAlign: "center",
+            background: "rgba(224,106,92,0.1)", border: "1px solid rgba(224,106,92,0.28)", color: "#E06A5C" }}>{error}</div>
         )}
 
         {!cameraSupported && (
-          <div className="rounded-2xl p-3 text-xs text-center mb-4"
-            style={{ background: "rgba(143,167,154,0.06)", border: "1px solid rgba(143,167,154,0.2)", color: "var(--text-secondary)" }}>
-            📷 Camera needs HTTPS, so it&apos;s unavailable here. Use <span style={{ color: "var(--accent)", fontWeight: 700 }}>Upload</span> below — it works the same.
+          <div style={{ marginTop: 16, borderRadius: 14, padding: "12px 14px", fontSize: 11, textAlign: "center",
+            background: "rgba(143,167,154,0.06)", border: "1px solid rgba(143,167,154,0.2)", color: MUTE }}>
+            Camera needs HTTPS, so it&apos;s unavailable here. Use <span style={{ color: ACC, fontWeight: 700 }}>Upload</span> below — it works the same.
           </div>
         )}
 
-        {/* CTA buttons — Upload becomes primary when the camera can't run */}
-        <button
-          onClick={() => { setPhotos([]); fileInputRef.current?.click(); }}
-          className={`w-full rounded-2xl font-black flex items-center justify-center gap-2 active:scale-95 transition-transform ${cameraSupported ? "py-3.5 text-sm mb-3" : "py-4 text-base mb-3"}`}
-          style={cameraSupported
-            ? { background: "transparent", border: "1px solid var(--border-bright)", color: "var(--text-secondary)" }
-            : { background: "linear-gradient(135deg, #7C3AED 0%, #4F46E5 45%, #0EA5E9 100%)", color: "#fff", boxShadow: "0 0 24px rgba(99,102,241,0.4)" }}
-        >
-          <span className="text-xl">📁</span> Upload 4 Photos (front, left, right, back)
-        </button>
-
-        <button
+        {/* Primary = Start Camera when supported, else Upload */}
+        <div
           onClick={openCamera}
-          className={`w-full rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-transform ${cameraSupported ? "py-4 font-black text-base" : "py-3 font-semibold text-sm"}`}
-          style={cameraSupported
-            ? { background: "linear-gradient(135deg, #7C3AED 0%, #4F46E5 45%, #0EA5E9 100%)", color: "#fff", boxShadow: "0 0 24px rgba(99,102,241,0.4)" }
-            : { background: "transparent", border: "1px solid var(--border-bright)", color: "var(--text-muted)" }}
-        >
-          <span className="text-xl">📷</span> {cameraSupported ? "Start Camera" : "Camera (needs HTTPS)"}
-        </button>
+          style={{ marginTop: 22, height: 58, borderRadius: 17, display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 10, cursor: "pointer", fontSize: 11, fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase",
+            ...(cameraSupported ? SAGE_BTN : GHOST_BTN) }}>
+          {cameraSupported ? "Start Camera" : "Camera (needs HTTPS)"}
+        </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={handleUpload}
-        />
+        <div
+          onClick={() => { setPhotos([]); fileInputRef.current?.click(); }}
+          style={{ marginTop: 12, height: 54, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 8, cursor: "pointer", fontSize: 11, fontWeight: 600, letterSpacing: ".18em", textTransform: "uppercase",
+            ...(cameraSupported ? GHOST_BTN : SAGE_BTN) }}>
+          Upload 4 Photos
+        </div>
+
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple
+          style={{ display: "none" }} onChange={handleUpload} />
       </div>
     );
   }
 
-  // ── CAMERA SCREEN ──────────────────────────────────────────────
+  // ── CAMERA SCREEN (NOIR biometric guide) ───────────────────────
   return (
-    <div className="fixed inset-0 bg-black z-[60] flex flex-col">
+    <div style={{ position: "fixed", inset: 0, background: "#0C0B0A", zIndex: 60 }}>
       {/* Flash overlay */}
-      {flash && <div className="absolute inset-0 bg-white z-50 pointer-events-none" style={{ opacity: 0.7 }} />}
+      {flash && <div style={{ position: "absolute", inset: 0, background: "#fff", zIndex: 50, pointerEvents: "none", opacity: 0.7 }} />}
 
-      {/* Video */}
+      {/* Live video */}
       <video
         ref={videoRef}
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: angle.id !== "back" ? "scaleX(-1)" : "none" }}
-        muted
-        playsInline
-        autoPlay
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
+          transform: facingMode === "user" ? "scaleX(-1)" : "none" }}
+        muted playsInline autoPlay
         onPlaying={() => setVideoReady(true)}
         onCanPlay={() => setVideoReady(true)}
       />
+      {/* Vignette for legibility */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none",
+        background: "radial-gradient(66% 46% at 50% 42%, transparent 40%, rgba(12,11,10,.55) 100%), linear-gradient(180deg, rgba(12,11,10,.6), transparent 30%, transparent 62%, rgba(12,11,10,.92))" }} />
 
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-3 bg-gradient-to-b from-black/80 to-transparent">
-        <button
-          onClick={() => { stopCamera(); setStep("home"); }}
-          className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center text-white text-lg"
-        >
-          ✕
-        </button>
-
-        {/* Progress dots */}
-        <div className="flex gap-2">
+      {/* Top: close + angle track + flip */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "44px 22px 0", zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <button onClick={() => { stopCamera(); setStep("home"); }}
+            style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(12,11,10,.6)", backdropFilter: "blur(10px)",
+              border: "1px solid rgba(242,239,233,.18)", color: INK, fontSize: 16, cursor: "pointer" }}>✕</button>
+          <div style={{ ...MICRO, color: "rgba(242,239,233,.6)" }}>Live Camera</div>
+          <button onClick={flipCamera} aria-label="Flip camera" title="Flip camera"
+            style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(12,11,10,.6)", backdropFilter: "blur(10px)",
+              border: "1px solid rgba(242,239,233,.18)", color: INK, fontSize: 16, cursor: "pointer" }}>↔</button>
+        </div>
+        {/* Angle track bars */}
+        <div style={{ display: "flex", gap: 8 }}>
           {ANGLES.map((a, i) => (
-            <div key={a.id} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-              style={{
-                background: i < photos.length ? a.color : i === currentAngle ? a.color + "40" : "#33333380",
-                border: `2px solid ${i <= currentAngle ? a.color : "#333"}`,
-                color: i < photos.length ? "#000" : i === currentAngle ? a.color : "#666",
-              }}>
-              {i < photos.length ? "✓" : i + 1}
-            </div>
+            <div key={a.id} style={{ flex: 1, height: 2, borderRadius: 2, transition: "all .5s ease",
+              background: i < photos.length ? "#F2EFE9" : i === currentAngle ? "rgba(242,239,233,.55)" : "rgba(242,239,233,.14)",
+              boxShadow: i === currentAngle && photos.length < 4 ? "0 0 12px rgba(242,239,233,.8)" : "none" }} />
           ))}
         </div>
-
-        <div className="w-10" />
+        <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between" }}>
+          {ANGLES.map((a, i) => (
+            <div key={a.id} style={{ flex: 1, textAlign: "center", fontSize: 9, letterSpacing: ".2em", textTransform: "uppercase",
+              color: i <= currentAngle ? "#FFFFFF" : "#4E4941", transition: "color .4s ease" }}>{a.label}</div>
+          ))}
+        </div>
       </div>
 
-      {/* Instruction overlay */}
-      <div className="absolute top-28 left-4 right-4 z-10">
+      {/* Flip result toast */}
+      {flipError && (
+        <div style={{ position: "absolute", top: "11%", left: 0, right: 0, textAlign: "center", zIndex: 20 }}>
+          <span style={{ display: "inline-block", padding: "8px 14px", borderRadius: 999, fontSize: 11, letterSpacing: ".04em",
+            background: "rgba(12,11,10,.8)", backdropFilter: "blur(10px)", border: "1px solid rgba(242,239,233,.18)", color: "#F2EFE9" }}>
+            {flipError}
+          </span>
+        </div>
+      )}
+
+      {/* Face guide + brackets */}
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-52%)", pointerEvents: "none" }}>
+        <svg viewBox="0 0 268 356" width="268" height="356" style={{ overflow: "visible", maxWidth: "78vw", height: "auto" }}>
+          <ellipse cx="134" cy="176" rx="103" ry="139" fill="none" stroke="#F2EFE9" strokeWidth="1.2" opacity="0.9" />
+          <ellipse cx="134" cy="176" rx="103" ry="139" fill="none" stroke="#F2EFE9" strokeWidth="8" opacity="0.09" />
+          <ellipse cx="134" cy="176" rx="60" ry="139" fill="none" stroke="#F2EFE9" strokeWidth="0.6" opacity="0.28" />
+          <ellipse cx="134" cy="176" rx="103" ry="68" fill="none" stroke="#F2EFE9" strokeWidth="0.6" opacity="0.22" />
+          <line x1="134" y1="30" x2="134" y2="322" stroke="#F2EFE9" strokeWidth="0.5" opacity="0.2" />
+          <line x1="32" y1="176" x2="236" y2="176" stroke="#F2EFE9" strokeWidth="0.5" opacity="0.2" />
+          <line x1="8" y1="16" x2="8" y2="50" stroke="#F2EFE9" strokeWidth="1.6" /><line x1="8" y1="16" x2="42" y2="16" stroke="#F2EFE9" strokeWidth="1.6" />
+          <line x1="260" y1="16" x2="260" y2="50" stroke="#F2EFE9" strokeWidth="1.6" /><line x1="226" y1="16" x2="260" y2="16" stroke="#F2EFE9" strokeWidth="1.6" />
+          <line x1="8" y1="340" x2="8" y2="306" stroke="#F2EFE9" strokeWidth="1.6" /><line x1="8" y1="340" x2="42" y2="340" stroke="#F2EFE9" strokeWidth="1.6" />
+          <line x1="260" y1="340" x2="260" y2="306" stroke="#F2EFE9" strokeWidth="1.6" /><line x1="226" y1="340" x2="260" y2="340" stroke="#F2EFE9" strokeWidth="1.6" />
+        </svg>
+      </div>
+
+      {/* Angle title + hint / capture confirm */}
+      <div style={{ position: "absolute", top: "16%", left: 0, right: 0, textAlign: "center", zIndex: 10, padding: "0 24px" }}>
         {tick ? (
-          <div className="bg-green-500/90 backdrop-blur-sm rounded-2xl px-4 py-4 text-center">
-            <p className="text-white font-black text-2xl">✓ Got it!</p>
+          <>
+            <div style={{ fontSize: 12, letterSpacing: ".4em", textTransform: "uppercase", color: "#4FD69C" }}>Captured ✓</div>
             {currentAngle < ANGLES.length - 1 && (
-              <p className="text-green-100 text-sm mt-1">
-                Now → {ANGLES[currentAngle + 1].instruction}
-              </p>
+              <div style={{ marginTop: 8, fontSize: 13, color: "rgba(242,239,233,.7)" }}>Next — {ANGLES[currentAngle + 1].label}</div>
             )}
-          </div>
+          </>
         ) : (
-          <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-4 py-4 text-center">
-            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: angle.color }}>
-              Photo {currentAngle + 1} of 4 — {angle.label}
-            </p>
-            <p className="text-white font-black text-xl">{angle.instruction}</p>
-            <p className="text-gray-300 text-sm mt-1">{angle.sub}</p>
-          </div>
+          <>
+            <div style={{ fontSize: 12, letterSpacing: ".4em", textTransform: "uppercase", color: INK }}>{angle.label}</div>
+            <div style={{ marginTop: 10, fontSize: 13, color: "rgba(242,239,233,.66)" }}>{angle.instruction}</div>
+            <div style={{ marginTop: 10, fontFamily: "ui-monospace,'SF Mono',Menlo,monospace", fontSize: 10, letterSpacing: ".2em", color: INK }}>
+              {videoReady ? "ALIGN WITHIN THE GUIDE" : "STARTING CAMERA…"}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Bottom — capture button */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 pb-12 flex flex-col items-center gap-3 bg-gradient-to-t from-black/80 to-transparent pt-8">
-        <button
-          onClick={capturePhoto}
-          disabled={!videoReady || tick}
-          className="w-20 h-20 rounded-full flex items-center justify-center transition-all active:scale-90"
-          style={{
-            background: videoReady && !tick ? angle.color : "#333",
-            border: `4px solid ${videoReady && !tick ? "white" : "#555"}`,
-            opacity: videoReady && !tick ? 1 : 0.5,
-          }}
-        >
-          {tick ? (
-            <span className="text-3xl">✓</span>
-          ) : videoReady ? (
-            <div className="w-12 h-12 rounded-full bg-white/30" />
-          ) : (
-            <div className="w-8 h-8 rounded-full border-3 border-white/40 border-t-white animate-spin" />
-          )}
-        </button>
-        <p className="text-white/60 text-xs">
-          {tick ? "" : videoReady ? "Tap to capture" : "Loading camera…"}
-        </p>
+      {/* Bottom: capture + retake + counter */}
+      <div style={{ position: "absolute", bottom: 52, left: 24, right: 24, zIndex: 10, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          onClick={() => { if (videoReady && !tick) capturePhoto(); }}
+          style={{ height: 60, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: videoReady && !tick ? "pointer" : "default", fontSize: 11, fontWeight: 700, letterSpacing: ".22em", textTransform: "uppercase",
+            background: videoReady && !tick ? "linear-gradient(160deg, #F4F1EB, #F2EFE9 52%, #C7BDAE)" : "rgba(242,239,233,.14)",
+            color: videoReady && !tick ? "#14130F" : "rgba(242,239,233,.6)",
+            border: videoReady && !tick ? "0" : "1px solid rgba(242,239,233,.3)",
+            boxShadow: videoReady && !tick ? "0 16px 34px -14px rgba(242,239,233,.6), inset 0 1px 0 rgba(255,255,255,.4)" : "none",
+            transition: "all .3s ease" }}>
+          {tick ? "Saved ✓" : videoReady ? `Capture ${angle.label}` : "Loading camera…"}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, letterSpacing: ".2em", textTransform: "uppercase", color: "#635E56" }}>
+          <button type="button" className="tap" onClick={() => { setPhotos([]); setCurrentAngle(0); }} style={{ letterSpacing: ".2em", textTransform: "uppercase", fontSize: 10, color: "#635E56" }}>Retake</button>
+          <button type="button" className="tap" onClick={flipCamera} title="Flip camera" aria-label="Flip camera"
+            style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "#8FA79A", padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(143,167,154,.32)" }}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8FA79A" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7h13a4 4 0 0 1 4 4v1" /><path d="m16 4-3 3 3 3" />
+              <path d="M21 17H8a4 4 0 0 1-4-4v-1" /><path d="m8 20 3-3-3-3" />
+            </svg>
+            Flip
+          </button>
+          <span>{photos.length} / {ANGLES.length}</span>
+        </div>
       </div>
 
-      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={canvasRef} style={{ display: "none" }} />
     </div>
   );
 }

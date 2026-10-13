@@ -37,12 +37,13 @@ const GROQ_MODEL = "openai/gpt-oss-120b";
 // same at every resolution, so bump this to "2K"/"4K" if quality matters more.)
 const OUTPUT_RESOLUTION = "1K";
 
-// Grid resolution. Generated at native 4K: the grid packs four views into ONE frame,
-// so each angle gets a quarter (~1649×2048 ≈ 2K per angle) — already sharp. No upscaler
-// is used; a separate upscale of a 4K grid would only add AI-invented detail (and a
-// ×2 pass would balloon it to ~8K). nano-banana-2 is flat-priced, so 4K costs the same
-// as 1K/2K — only a slightly longer render.
-const GRID_RESOLUTION = "4K";
+// Grid resolution. The grid packs four views into ONE frame, so each angle gets a
+// quarter of this. 4K renders take ~40–60s, which overruns Vercel's 60s serverless
+// cap (maxDuration) and kills the request mid-generation — so the flow never advances.
+// 2K finishes comfortably under the cap; each quadrant is still ~1K, plenty for a
+// preview. Bump back to "4K" only on a plan with a longer function timeout (Vercel Pro
+// = up to 300s). nano-banana-2 is flat-priced, so resolution only changes render time.
+const GRID_RESOLUTION = "2K";
 
 // Colour previews render at 2K — colour is easy to judge at a lower resolution, and
 // it makes the "Try this colour" previews faster/cheaper than the 4K haircut grids.
@@ -93,12 +94,15 @@ async function buildStyleNotes(
   description: string,
   color?: string,
   texture?: string,
-  lengthLimit?: string
-): Promise<{ summary: string; barberInstructions: string }> {
+  lengthLimit?: string,
+  faceShape?: string
+): Promise<{ whySuits: string; summary: string; barberInstructions: string }> {
   const apiKey = process.env.GROQ_API_KEY;
   const subject = target === "beard" ? "beard style" : "hairstyle";
   const verb = target === "beard" ? "trimming/shaping" : "cutting";
+  const faceBit = faceShape ? ` a ${faceShape} face` : " their face";
   const fallback = {
+    whySuits: `- Flatters${faceBit}\n- Works great with your ${texture ? `${texture} ` : ""}hair\n- Easy, natural finish that's simple to keep up`,
     summary: `${description}. A clean, low-maintenance ${subject}.`,
     barberInstructions: `${target === "beard" ? "Shape" : "Cut"}: ${description}.${color ? ` Colour: ${color}.` : ""}${texture ? ` Texture: ${texture}.` : ""}${lengthLimit ? ` Length: ${lengthLimit}.` : ""}`,
   };
@@ -112,16 +116,17 @@ async function buildStyleNotes(
         model: GROQ_MODEL,
         messages: [{
           role: "user",
-          content: `A customer is getting this ${subject}: "${description}"${color ? `, colour: ${color}` : ""}${texture ? `, texture: ${texture}` : ""}.${lengthLimit ? ` Length limit: ${lengthLimit}.` : ""}
+          content: `A customer with${faceBit}${texture ? `, ${texture} hair` : ""} is getting this ${subject}: "${description}"${color ? `, colour: ${color}` : ""}.${lengthLimit ? ` Length limit: ${lengthLimit}.` : ""}
 
 Return ONLY valid JSON, no markdown:
 {
-  "summary": "2-3 sentence customer-facing description of the look and why it suits them",
+  "whySuits": "3 or 4 SHORT casual bullet points, each on its OWN line starting with '- ', friendly and relaxed like a stylist chatting to a friend — why this look suits them (face shape, hair type, everyday vibe). Specific, no jargon, no full paragraphs.",
+  "summary": "2-3 sentence customer-facing description of the look itself",
   "barberInstructions": "Concise step-by-step ${verb} instructions a barber would follow"
 }`,
         }],
         temperature: 0.4,
-        max_tokens: 900,
+        max_tokens: 1100,
         reasoning_effort: "low",
         response_format: { type: "json_object" },
       }),
@@ -130,6 +135,7 @@ Return ONLY valid JSON, no markdown:
     const data = await res.json();
     const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}");
     return {
+      whySuits: parsed.whySuits ?? fallback.whySuits,
       summary: parsed.summary ?? fallback.summary,
       barberInstructions: parsed.barberInstructions ?? fallback.barberInstructions,
     };
@@ -197,7 +203,8 @@ export async function POST(req: NextRequest) {
         hairTexture,
         hairMeasurements
           ? `top ${hairMeasurements.topCm}, sides ${hairMeasurements.sideCm}, nape ${hairMeasurements.napeCm}`
-          : lengthAnchor(hairLength)
+          : lengthAnchor(hairLength),
+        faceShape
       ),
     ]);
     const hairDescription = rawName;
@@ -377,6 +384,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         imageUrl: `data:image/jpeg;base64,${front}`,
         angles: { front: `data:image/jpeg;base64,${front}`, left: `data:image/jpeg;base64,${left}`, right: `data:image/jpeg;base64,${right}`, back: `data:image/jpeg;base64,${back}` },
+        whySuits: notes.whySuits,
         summary: notes.summary,
         barberInstructions: notes.barberInstructions,
         reference: referenceInfo,
@@ -387,6 +395,7 @@ export async function POST(req: NextRequest) {
     const mimeType = imgRes.headers.get("content-type") ?? "image/png";
     return NextResponse.json({
       imageUrl: `data:${mimeType};base64,${base64}`,
+      whySuits: notes.whySuits,
       summary: notes.summary,
       barberInstructions: notes.barberInstructions,
       reference: referenceInfo,

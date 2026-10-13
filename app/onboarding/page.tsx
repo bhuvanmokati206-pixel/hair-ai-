@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import TrimViewMark from "@/components/TrimViewMark";
 
 const SLIDES = [
   {
@@ -67,7 +68,7 @@ export default function OnboardingPage() {
           >
             <div className="w-24 h-24 rounded-3xl flex items-center justify-center text-5xl"
               style={{ background: "var(--accent-light)" }}>
-              {slide.emoji}
+              {index === 0 ? <TrimViewMark size={48} color="var(--accent)" /> : slide.emoji}
             </div>
             <h2 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{slide.title}</h2>
 

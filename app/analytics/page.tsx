@@ -65,7 +65,14 @@ export default function AnalyticsPage() {
       if (!user) { router.replace("/login"); return; }
 
       const { data: p } = await supabase
-        .from("profiles").select("salon_id, salons(code)").eq("id", user.id).maybeSingle();
+        .from("profiles").select("role, salon_id, salons(code)").eq("id", user.id).maybeSingle();
+
+      // Analytics is admin-only. Managers (and any non-owner salon role) are
+      // bounced to their home; platform admins are allowed through.
+      if (p && p.role !== "salon_owner" && p.role !== "platform_admin") {
+        router.replace("/home");
+        return;
+      }
 
       if (!p?.salon_id) { setLoading(false); return; }
       setSalonId(p.salon_id);

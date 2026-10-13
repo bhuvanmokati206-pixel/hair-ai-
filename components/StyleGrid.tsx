@@ -285,6 +285,7 @@ export default function StyleGrid({ styles, bestMatch, onGenerate, onGenerateGif
         styleName={detailStyle?.styleName ?? ""}
         angles={detailStyle?.angles}
         anglesLoading={detailStyle?.anglesLoading}
+        whySuits={detailStyle?.whySuits}
         summary={detailStyle?.summary}
         barberInstructions={detailStyle?.barberInstructions}
         onGenerateAngle={onGenerateAngle && detailIndex !== null

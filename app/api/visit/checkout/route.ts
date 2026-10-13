@@ -12,6 +12,7 @@ import { getSessionSalonId } from "@/lib/auth";
 import { updateVisitChoice, type VisitStatus } from "@/lib/rag";
 import { getHeroPhotoUrl } from "@/lib/visitPhotos";
 import { enqueuePostVisitMessages } from "@/lib/messageQueue";
+import { formatTriggerDemoText } from "@/lib/whatsappDemo";
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,12 +53,26 @@ export async function POST(req: NextRequest) {
     // The queue's own unique index makes a repeat enqueue a no-op, so re-running
     // checkout is safe. Skip the whole block on an already-done visit anyway.
     let queued: { review: unknown; rebook: unknown } | null = null;
-    if (!alreadyDone) {
-      const customer = visit.customers as unknown as
-        { name: string | null; phone: string; wa_opt_in: boolean; opted_out_at: string | null } | null;
-      const barber   = visit.barbers as unknown as { name: string | null } | null;
-      const salon    = visit.salons  as unknown as { name: string; rebook_after_days: number | null } | null;
+    let reviewPreviewText: string | null = null;
+    let customerPhone: string | null = null;
+    let customerName: string | null = null;
 
+    const customer = visit.customers as unknown as
+      { name: string | null; phone: string; wa_opt_in: boolean; opted_out_at: string | null } | null;
+    const barber   = visit.barbers as unknown as { name: string | null } | null;
+    const salon    = visit.salons  as unknown as { name: string; rebook_after_days: number | null } | null;
+
+    customerPhone = customer?.phone ?? null;
+    customerName = customer?.name ?? "there";
+
+    reviewPreviewText = formatTriggerDemoText("review", {
+      customerName: customerName,
+      salonName: salon?.name ?? "our salon",
+      barberName: barber?.name ?? "our team",
+      styleName: visit.chosen_style ?? "your new look",
+    });
+
+    if (!alreadyDone) {
       // No consent, no messages. Meta enforces this and so do we.
       if (customer?.wa_opt_in && !customer.opted_out_at && customer.phone) {
         const heroUrl = await getHeroPhotoUrl(visitId);
@@ -76,7 +91,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ok: true, alreadyDone, queued });
+    return NextResponse.json({
+      ok: true,
+      alreadyDone,
+      queued,
+      reviewPreviewText,
+      customerPhone,
+      customerName,
+    });
   } catch (err) {
     console.error("[checkout] error:", err);
     return NextResponse.json({ error: "Checkout failed" }, { status: 500 });

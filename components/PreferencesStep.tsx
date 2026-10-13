@@ -10,6 +10,16 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { PREFERENCE_QUESTIONS, type PreferenceAnswers } from "@/lib/preferences";
 
+// ── NOIR palette (from the imported design) ──────────────────────
+const ACC = "#8FA79A";
+const INK = "#F2EFE9";
+const MUTE = "#948D82";
+const FAINT = "#7C766C";
+const MICRO: React.CSSProperties = {
+  fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+  fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: FAINT,
+};
+
 export default function PreferencesStep({
   onSubmit,
   onSkip,
@@ -25,18 +35,16 @@ export default function PreferencesStep({
   const answeredCount = Object.values(answers).filter(Boolean).length;
 
   return (
-    <div className="min-h-screen pb-40" style={{ background: "var(--bg)" }}>
-      <div className="px-5 pt-14 pb-4">
-        <p className="section-label">Before we suggest styles</p>
-        <h1 className="text-2xl font-black" style={{ color: "var(--text-primary)" }}>
-          A few quick questions
-        </h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-          Tap what fits. It tunes the AI&apos;s picks to what you actually want.
-        </p>
+    <div className="min-h-screen" style={{ background: "var(--bg)", color: INK, paddingBottom: 150 }}>
+      <div style={{ padding: "56px 22px 4px" }}>
+        <div style={MICRO}>Before we suggest styles</div>
+        <div style={{ marginTop: 10, fontSize: 26, fontWeight: 200, letterSpacing: ".04em" }}>A few quick questions</div>
+        <div style={{ marginTop: 8, fontSize: 13, color: MUTE }}>
+          Tap what fits — it tunes the AI&apos;s picks to what you actually want.
+        </div>
       </div>
 
-      <div className="px-5 flex flex-col gap-5">
+      <div style={{ padding: "18px 22px 0", display: "flex", flexDirection: "column", gap: 22 }}>
         {PREFERENCE_QUESTIONS.map((q, qi) => (
           <motion.div
             key={q.id}
@@ -44,22 +52,24 @@ export default function PreferencesStep({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: qi * 0.05 }}
           >
-            <div className="flex items-baseline justify-between mb-2">
-              <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{q.question}</h2>
-              {q.helper && <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{q.helper}</span>}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 12 }}>
+              <div style={{ fontSize: 15, fontWeight: 500 }}>{q.question}</div>
+              {q.helper && <span style={{ fontSize: 11, color: FAINT, flexShrink: 0 }}>{q.helper}</span>}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
               {q.options.map((o) => {
                 const active = answers[q.id] === o.value;
                 return (
                   <button
                     key={o.value}
                     onClick={() => pick(q.id, o.value)}
-                    className="px-3.5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
                     style={{
-                      background: active ? "var(--accent)" : "var(--bg-card)",
-                      color: active ? "#fff" : "var(--text-primary)",
-                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      padding: "11px 15px", borderRadius: 13, fontSize: 13, fontWeight: 500,
+                      display: "flex", alignItems: "center", gap: 7, cursor: "pointer",
+                      transition: "all .2s ease",
+                      background: active ? "rgba(143,167,154,.16)" : "rgba(23,22,20,.72)",
+                      color: active ? "#BFD2C7" : INK,
+                      border: `1px solid ${active ? "rgba(143,167,154,.5)" : "rgba(242,239,233,.09)"}`,
                     }}
                   >
                     {o.emoji && <span>{o.emoji}</span>}
@@ -73,19 +83,19 @@ export default function PreferencesStep({
       </div>
 
       {/* Sticky actions */}
-      <div className="fixed bottom-0 left-0 right-0 px-5 pt-3 pb-6"
-        style={{ background: "linear-gradient(to top, var(--bg) 70%, transparent)" }}>
-        <button
+      <div className="fixed bottom-0 left-0 right-0" style={{ padding: "14px 22px calc(22px + env(safe-area-inset-bottom))", background: "linear-gradient(to top, var(--bg) 72%, transparent)" }}>
+        <div
           onClick={() => onSubmit(answers)}
-          className="w-full btn-primary"
+          style={{
+            height: 56, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+            fontSize: 11, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase",
+            background: "linear-gradient(160deg, #F4F1EB, #8FA79A 52%, #C7BDAE)", color: "#14130F",
+            boxShadow: "0 16px 34px -14px rgba(143,167,154,.6)",
+          }}
         >
           {answeredCount > 0 ? `Analyse with ${answeredCount} preference${answeredCount > 1 ? "s" : ""}` : "Analyse my hair"}
-        </button>
-        <button
-          onClick={onSkip}
-          className="w-full text-center text-xs mt-2.5 py-1"
-          style={{ color: "var(--text-muted)" }}
-        >
+        </div>
+        <button type="button" className="tap" onClick={onSkip} style={{ width: "100%", textAlign: "center", fontSize: 11, marginTop: 12, padding: "2px 0", cursor: "pointer", color: FAINT, letterSpacing: ".04em" }}>
           Skip — just analyse the photos
         </button>
       </div>

@@ -26,7 +26,12 @@ export const maxDuration = 60;
 // Pass 2 (the real read) uses flash: stronger reasoning → more honest, varied,
 // accurate style picks. ~₹0.79/scan vs ~₹0.22 on lite; analysis is the cheap part.
 const CLASSIFY_MODEL = "gemini-3.5-flash-lite";
-const ANALYSIS_MODEL = "gemini-3.5-flash";
+// Analysis on flash-LITE: the full gemini-3.5-flash free tier is only 20 requests
+// PER DAY (RESOURCE_EXHAUSTED after a few scans) — unusable. flash-lite has a much
+// larger free quota, returns clean JSON, and analysed test scans correctly. For
+// top-quality analysis at volume, switch back to "gemini-3.5-flash" with a BILLED
+// key (pay-as-you-go), which lifts the 20/day cap.
+const ANALYSIS_MODEL = "gemini-3.5-flash-lite";
 const geminiUrl = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 type GridImage = { base64: string; mediaType: string };
@@ -38,6 +43,16 @@ async function geminiVision(prompt: string, grid: GridImage, maxTokens: number, 
   // mock — the free tier's per-minute cap is easy to trip when scans come in bursts.
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      // thinkingBudget:0 disables the model's "thinking" pass. With thinking ON,
+      // gemini-3.5-flash interleaves reasoning into the JSON and it comes back
+      // malformed → parse fails → the route falls back to the mock. BUT the
+      // flash-LITE classify model rejects thinkingConfig with a 400 ("invalid
+      // argument"), so only send it to the full analysis model.
+      const generationConfig: Record<string, unknown> = { temperature, maxOutputTokens: maxTokens, responseMimeType: "application/json" };
+      // Only the FULL flash needs thinking disabled (it garbles JSON otherwise).
+      // flash-lite has no thinking pass and REJECTS thinkingConfig with a 400.
+      if (model === "gemini-3.5-flash") generationConfig.thinkingConfig = { thinkingBudget: 0 };
+
       const res = await fetch(`${geminiUrl(model)}?key=${process.env.GEMINI_API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,7 +63,7 @@ async function geminiVision(prompt: string, grid: GridImage, maxTokens: number, 
               { inline_data: { mime_type: grid.mediaType, data: grid.base64 } },
             ],
           }],
-          generationConfig: { temperature, maxOutputTokens: maxTokens, responseMimeType: "application/json" },
+          generationConfig,
         }),
       });
       if (res.status === 429 || res.status >= 500) {
@@ -62,8 +77,12 @@ async function geminiVision(prompt: string, grid: GridImage, maxTokens: number, 
         console.error(`[analyze-hair] ${model} returned ${res.status}:`, JSON.stringify(body).slice(0, 300));
         return null;
       }
+      // Join every non-thought text part (defensive — a normal JSON answer is one
+      // part, but this survives any stray thought/second part).
+      const parts: { thought?: boolean; text?: string }[] = body.candidates?.[0]?.content?.parts ?? [];
+      const text = parts.filter((p) => !p.thought && typeof p.text === "string").map((p) => p.text).join("");
       return {
-        text: body.candidates?.[0]?.content?.parts?.[0]?.text ?? "",
+        text,
         inTok: body.usageMetadata?.promptTokenCount,
         outTok: body.usageMetadata?.candidatesTokenCount,
       };

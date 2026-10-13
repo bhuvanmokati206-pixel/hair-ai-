@@ -29,7 +29,7 @@ const EMPTY_DRAFT: Draft = {
   targets: [], variants: [{ label: "", price: 0, memberPrice: undefined, lengthBand: "any" }], note: "",
 };
 
-const card = { background: "var(--bg-card)", border: "1px solid var(--border)" };
+const card = { background: "rgba(23,22,20,.72)", border: "1px solid rgba(242,239,233,.08)" };
 
 export default function MenuManagerPage() {
   const [services, setServices] = useState<MenuServiceRow[]>([]);
@@ -75,8 +75,11 @@ export default function MenuManagerPage() {
   return (
     <div className="min-h-screen pb-28" style={{ background: "var(--bg)" }}>
       <div className="px-5 pt-14 pb-4">
-        <h1 className="text-2xl font-black gradient-text-animated">Service Menu</h1>
-        <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
+        <div style={{ fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", fontSize: 9, letterSpacing: ".24em", textTransform: "uppercase", color: "#7C766C" }}>
+          Unisex salon
+        </div>
+        <h1 style={{ marginTop: 10, fontSize: 26, fontWeight: 200, letterSpacing: ".04em", color: "#F2EFE9" }}>Service Menu</h1>
+        <p className="text-sm mt-1.5" style={{ color: "#948D82" }}>
           {loading ? "Loading…" : `${activeCount} services · powers customer recommendations`}
         </p>
       </div>
