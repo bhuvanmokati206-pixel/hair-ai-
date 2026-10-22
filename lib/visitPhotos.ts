@@ -59,10 +59,18 @@ export async function ensureBucket(): Promise<void> {
   const { data: buckets, error } = await db.storage.listBuckets();
   if (error) throw error;
 
-  if (buckets?.some((b) => b.name === VISIT_PHOTOS_BUCKET)) return;
+  if (buckets?.some((b) => b.name === VISIT_PHOTOS_BUCKET)) {
+    const { error: updateErr } = await db.storage.updateBucket(VISIT_PHOTOS_BUCKET, {
+      public: false,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    });
+    if (updateErr) throw updateErr;
+    return;
+  }
 
   const { error: createErr } = await db.storage.createBucket(VISIT_PHOTOS_BUCKET, {
-    public: true, // WhatsApp media templates need a publicly fetchable URL
+    public: false,
     fileSizeLimit: 10 * 1024 * 1024,
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   });
@@ -136,8 +144,8 @@ export async function saveVisitPhoto(
     .upload(storagePath, buffer, { contentType, upsert: true });
   if (uploadErr) throw uploadErr;
 
-  const { data: pub } = db.storage.from(VISIT_PHOTOS_BUCKET).getPublicUrl(storagePath);
-  const url = pub?.publicUrl ?? null;
+  const { data: signed } = await db.storage.from(VISIT_PHOTOS_BUCKET).createSignedUrl(storagePath, 60 * 60);
+  const url = signed?.signedUrl ?? null;
 
   const { data, error } = await db
     .from("visit_photos")
@@ -226,7 +234,10 @@ export async function getVisitPhotos(visitId: string) {
     .order("is_hero", { ascending: false })
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  return Promise.all((data ?? []).map(async (photo) => {
+    const { data: signed } = await db.storage.from(VISIT_PHOTOS_BUCKET).createSignedUrl(photo.storage_path, 60 * 60);
+    return { ...photo, url: signed?.signedUrl ?? null };
+  }));
 }
 
 /**
@@ -240,4 +251,30 @@ export async function getHeroPhotoUrl(visitId: string): Promise<string | null> {
 
   const front = photos.find((p) => p.kind === "generated" && p.angle === "front");
   return front?.url ?? photos.find((p) => p.kind === "generated")?.url ?? null;
+}
+
+/** Internal storage path for delayed delivery jobs; never expose it to clients. */
+export async function getHeroPhotoStoragePath(visitId: string): Promise<string | null> {
+  const db = getServiceClient();
+  const { data, error } = await db
+    .from("visit_photos")
+    .select("storage_path, kind, angle, is_hero")
+    .eq("visit_id", visitId)
+    .order("is_hero", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  const photos = data ?? [];
+  return photos.find((p) => p.is_hero)?.storage_path
+    ?? photos.find((p) => p.kind === "generated" && p.angle === "front")?.storage_path
+    ?? photos.find((p) => p.kind === "generated")?.storage_path
+    ?? null;
+}
+
+/** Creates a short-lived URL only when a trusted server operation needs one. */
+export async function createVisitPhotoSignedUrl(storagePath: string): Promise<string | null> {
+  const { data, error } = await getServiceClient().storage
+    .from(VISIT_PHOTOS_BUCKET)
+    .createSignedUrl(storagePath, 15 * 60);
+  if (error) throw error;
+  return data?.signedUrl ?? null;
 }

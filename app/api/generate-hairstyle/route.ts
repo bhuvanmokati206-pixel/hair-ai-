@@ -5,6 +5,7 @@ import { buildHairGenPrompt, buildFourAngleGridPrompt, buildRecolorGridPrompt, b
 import { getStyleTargetCm } from "@/lib/compatibilityEngine";
 import { findReference } from "@/lib/referenceLibrary";
 import { findColor } from "@/lib/colorPalette";
+import { getVisitPhotos } from "@/lib/visitPhotos";
 
 // Vercel serverless: image generation (nano-banana) takes ~40–60s. Default is 10s,
 // which would abort every generation — raise to the Hobby-tier max of 60s.
@@ -144,20 +145,59 @@ Return ONLY valid JSON, no markdown:
   }
 }
 
-type AnglePhoto = { base64: string; mediaType: string };
+type AnglePhoto = {
+  base64?: string;
+  mediaType?: string;
+  url?: string;
+  preview?: string;
+};
 type Angle = "front" | "left" | "right" | "back";
+
+async function resolveAnglePhoto(p?: AnglePhoto): Promise<{ base64: string; mediaType: string } | null> {
+  if (!p) return null;
+  let base64 = p.base64?.trim() || "";
+  let mediaType = p.mediaType || "image/jpeg";
+  const urlCandidate = p.url || p.preview;
+
+  if (!base64 && urlCandidate) {
+    if (urlCandidate.startsWith("data:")) {
+      const match = urlCandidate.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        mediaType = match[1];
+        base64 = match[2];
+      }
+    } else if (urlCandidate.startsWith("http://") || urlCandidate.startsWith("https://")) {
+      try {
+        const res = await fetch(urlCandidate);
+        if (res.ok) {
+          const contentType = res.headers.get("content-type")?.split(";")[0].trim() || "image/jpeg";
+          const buf = Buffer.from(await res.arrayBuffer());
+          base64 = buf.toString("base64");
+          mediaType = contentType;
+        }
+      } catch (err) {
+        console.warn("[generate-hairstyle] failed to fetch photo from url:", urlCandidate, err);
+      }
+    }
+  }
+
+  if (!base64) return null;
+  return { base64, mediaType };
+}
 
 export async function POST(req: NextRequest) {
   try {
     const {
       styleName, hairColor, hairTexture, includeBeard, customDescription,
-      photoBase64, photoMediaType, photos, hairLength, editTarget,
+      photoBase64, photoMediaType, photoUrl, photos, hairLength, editTarget,
       skinTone, hairDensity, faceShape, faceLength, hairMeasurements, angle, gridMode,
       genPromptVersion, gender, hairlineShape, hairlineNotes, useReference, recolorTo, combo,
+      visitId,
     } = await req.json() as {
       styleName?: string; hairColor?: string; hairTexture?: string; includeBeard?: boolean;
-      customDescription?: string; photoBase64?: string; photoMediaType?: string;
+      customDescription?: string; photoBase64?: string; photoMediaType?: string; photoUrl?: string;
       photos?: Partial<Record<Angle, AnglePhoto>>;
+      visitId?: string;
       hairLength?: string; editTarget?: "hair" | "beard";
       skinTone?: string; hairDensity?: string; faceShape?: string; faceLength?: string;
       hairMeasurements?: { topLength: string; sideLength: string; napeLength: string; topCm: string; sideCm: string; napeCm: string };
@@ -178,13 +218,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing style name" }, { status: 400 });
     }
 
-    const anglePhotos: Partial<Record<Angle, AnglePhoto>> = photos ?? {};
-    if (photoBase64 && photoMediaType && !anglePhotos.front) {
-      anglePhotos.front = { base64: photoBase64, mediaType: photoMediaType };
+    const rawAnglePhotos: Partial<Record<Angle, AnglePhoto>> = photos ?? {};
+    if ((photoBase64 || photoUrl) && !rawAnglePhotos.front) {
+      rawAnglePhotos.front = {
+        base64: photoBase64,
+        mediaType: photoMediaType,
+        url: photoUrl,
+      };
     }
-    // Use the requested angle's photo, defaulting to front.
-    const srcAngle = (angle && anglePhotos[angle]) ? angle : "front";
-    const src = anglePhotos[srcAngle];
+
+    // Resolve any data URIs or HTTP storage URLs to base64
+    const resolvedAnglePhotos: Partial<Record<Angle, { base64: string; mediaType: string }>> = {};
+    await Promise.all(
+      (["front", "left", "right", "back"] as Angle[]).map(async (ang) => {
+        const raw = rawAnglePhotos[ang];
+        if (raw) {
+          const res = await resolveAnglePhoto(raw);
+          if (res) resolvedAnglePhotos[ang] = res;
+        }
+      })
+    );
+
+    // If photos are still empty and visitId is provided, retrieve original photos from Supabase Storage
+    if (Object.keys(resolvedAnglePhotos).length === 0 && visitId) {
+      try {
+        const dbPhotos = await getVisitPhotos(visitId);
+        const originals = dbPhotos.filter((p) => p.kind === "original" && p.url);
+        await Promise.all(
+          originals.map(async (op) => {
+            const ang = (op.angle as Angle) || "front";
+            if (!resolvedAnglePhotos[ang] && op.url) {
+              const res = await resolveAnglePhoto({ url: op.url });
+              if (res) resolvedAnglePhotos[ang] = res;
+            }
+          })
+        );
+      } catch (err) {
+        console.warn("[generate-hairstyle] failed to load photos from visitId:", visitId, err);
+      }
+    }
+
+    // Use requested angle, falling back to front or first available angle
+    const srcAngle: Angle = (angle && resolvedAnglePhotos[angle])
+      ? angle
+      : resolvedAnglePhotos.front
+        ? "front"
+        : ((Object.keys(resolvedAnglePhotos)[0] as Angle) || "front");
+    const src = resolvedAnglePhotos[srcAngle];
     if (!src?.base64) {
       return NextResponse.json({ error: "A reference photo is required." }, { status: 400 });
     }
@@ -225,8 +305,8 @@ export async function POST(req: NextRequest) {
     // the style comes from WORDS, never a reference image.
     const ANGLE_ORDER: Angle[] = ["front", "left", "right", "back"];
     const orderedAngles = ANGLE_ORDER
-      .map((a) => anglePhotos[a])
-      .filter((p): p is AnglePhoto => !!p?.base64);
+      .map((a) => resolvedAnglePhotos[a])
+      .filter((p): p is { base64: string; mediaType: string } => !!p?.base64);
     const haveFourAngles = orderedAngles.length === 4;
     let useFourAngle = false;
 
@@ -346,7 +426,7 @@ export async function POST(req: NextRequest) {
     const imageInputs = useFourAngle
       ? orderedAngles.map((a) => `data:${a.mediaType};base64,${a.base64}`)
       : gridMode
-        ? [`data:${(anglePhotos.front ?? src).mediaType};base64,${(anglePhotos.front ?? src).base64}`]
+        ? [`data:${(resolvedAnglePhotos.front ?? src).mediaType};base64,${(resolvedAnglePhotos.front ?? src).base64}`]
         : [`data:${src.mediaType};base64,${src.base64}`];
 
     if (referenceUsed) {

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchSafeRemoteImage } from "@/lib/remoteImage";
+import { getVisitPhotos } from "@/lib/visitPhotos";
 
 export const maxDuration = 45;
 
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
       mediaType = "image/jpeg",
       imageUrl,
       customerPhotoBase64,
+      customerPhotoUrl,
+      visitId,
       customerMediaType = "image/jpeg",
       customerContext,
     } = (await req.json()) as {
@@ -74,6 +78,8 @@ export async function POST(req: NextRequest) {
       mediaType?: string;
       imageUrl?: string;
       customerPhotoBase64?: string;
+      customerPhotoUrl?: string;
+      visitId?: string;
       customerMediaType?: string;
       customerContext?: {
         faceShape?: string;
@@ -87,10 +93,8 @@ export async function POST(req: NextRequest) {
     let mimeType = mediaType;
 
     if (!base64Data && imageUrl) {
-      const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
-      if (!imgRes.ok) throw new Error("Could not fetch reference image URL");
-      mimeType = imgRes.headers.get("content-type") ?? "image/jpeg";
-      const buffer = Buffer.from(await imgRes.arrayBuffer());
+      const { buffer, contentType } = await fetchSafeRemoteImage(imageUrl);
+      mimeType = contentType;
       base64Data = buffer.toString("base64");
     }
 
@@ -120,17 +124,44 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (customerPhotoBase64) {
-      const cleanCustomerBase64 = customerPhotoBase64.includes(";base64,")
-        ? customerPhotoBase64.split(";base64,")[1]
-        : customerPhotoBase64;
+    let effectiveCustomerBase64 = customerPhotoBase64;
+    let effectiveCustomerMediaType = customerMediaType;
+
+    if (!effectiveCustomerBase64 && customerPhotoUrl) {
+      try {
+        const { buffer, contentType } = await fetchSafeRemoteImage(customerPhotoUrl);
+        effectiveCustomerBase64 = buffer.toString("base64");
+        effectiveCustomerMediaType = contentType;
+      } catch (err) {
+        console.warn("[analyze-reference] failed to load customerPhotoUrl:", customerPhotoUrl, err);
+      }
+    }
+
+    if (!effectiveCustomerBase64 && visitId) {
+      try {
+        const dbPhotos = await getVisitPhotos(visitId);
+        const front = dbPhotos.find((p) => p.kind === "original" && (p.angle === "front" || !p.angle) && p.url);
+        if (front?.url) {
+          const { buffer, contentType } = await fetchSafeRemoteImage(front.url);
+          effectiveCustomerBase64 = buffer.toString("base64");
+          effectiveCustomerMediaType = contentType;
+        }
+      } catch (err) {
+        console.warn("[analyze-reference] failed to load front photo from visitId:", visitId, err);
+      }
+    }
+
+    if (effectiveCustomerBase64) {
+      const cleanCustomerBase64 = effectiveCustomerBase64.includes(";base64,")
+        ? effectiveCustomerBase64.split(";base64,")[1]
+        : effectiveCustomerBase64;
 
       parts.push({
         text: "Image 1: Customer's face scan:",
       });
       parts.push({
         inline_data: {
-          mime_type: customerMediaType,
+          mime_type: effectiveCustomerMediaType,
           data: cleanCustomerBase64,
         },
       });

@@ -224,6 +224,11 @@ export default function CameraCapture({ onComplete }: Props) {
       preview: dataUrl,
     };
 
+    // Tactile haptic feedback on devices with vibration support
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try { navigator.vibrate(25); } catch { /* ignore */ }
+    }
+
     // Flash + tick animation
     setFlash(true);
     setTick(true);
@@ -368,14 +373,43 @@ export default function CameraCapture({ onComplete }: Props) {
         </div>
 
         {error && (
-          <div style={{ marginTop: 16, borderRadius: 14, padding: "12px 14px", fontSize: 12, textAlign: "center",
-            background: "rgba(224,106,92,0.1)", border: "1px solid rgba(224,106,92,0.28)", color: "#E06A5C" }}>{error}</div>
+          <div style={{ marginTop: 16, borderRadius: 16, padding: "14px 16px", fontSize: 12,
+            background: "rgba(224,106,92,0.08)", border: "1px solid rgba(224,106,92,0.28)", color: "#F2EFE9" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#E06A5C", fontWeight: 700, marginBottom: 4 }}>
+              <span>⚠️</span>
+              <span>Camera Access Issue</span>
+            </div>
+            <p style={{ color: "#948D82", fontSize: 11, lineHeight: 1.5, margin: "4px 0 10px" }}>{error}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={openCamera}
+                style={{ flex: 1, padding: "7px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700,
+                  letterSpacing: ".1em", textTransform: "uppercase", background: "rgba(242,239,233,0.1)",
+                  border: "1px solid rgba(242,239,233,0.2)", color: "#F2EFE9" }}
+              >
+                Retry Camera
+              </button>
+              <button
+                type="button"
+                onClick={() => { setError(null); fileInputRef.current?.click(); }}
+                style={{ flex: 1, padding: "7px 12px", borderRadius: 10, fontSize: 10, fontWeight: 700,
+                  letterSpacing: ".1em", textTransform: "uppercase", background: "rgba(143,167,154,0.15)",
+                  border: "1px solid rgba(143,167,154,0.3)", color: "#8FA79A" }}
+              >
+                Upload Instead
+              </button>
+            </div>
+          </div>
         )}
 
         {!cameraSupported && (
-          <div style={{ marginTop: 16, borderRadius: 14, padding: "12px 14px", fontSize: 11, textAlign: "center",
+          <div style={{ marginTop: 16, borderRadius: 16, padding: "14px 16px", fontSize: 11, textAlign: "left",
             background: "rgba(143,167,154,0.06)", border: "1px solid rgba(143,167,154,0.2)", color: MUTE }}>
-            Camera needs HTTPS, so it&apos;s unavailable here. Use <span style={{ color: ACC, fontWeight: 700 }}>Upload</span> below — it works the same.
+            <p style={{ color: ACC, fontWeight: 700, marginBottom: 4 }}>📱 Camera requires HTTPS on mobile networks</p>
+            <p style={{ lineHeight: 1.5 }}>
+              Browsers restrict webcam streaming over non-secure Wi-Fi. Run <code style={{ color: INK }}>npm run dev:https</code> or tap <span style={{ color: ACC, fontWeight: 700 }}>Upload 4 Photos</span> below.
+            </p>
           </div>
         )}
 

@@ -8,6 +8,12 @@ import { getServiceClient } from "@/lib/supabase";
 import { getSessionSalonId } from "@/lib/auth";
 import { VISIT_PHOTOS_BUCKET, ensureBucket } from "@/lib/visitPhotos";
 
+async function signedBarberPhoto(storagePath: string | null | undefined): Promise<string | null> {
+  if (!storagePath || storagePath.startsWith("http")) return null;
+  const { data } = await getServiceClient().storage.from(VISIT_PHOTOS_BUCKET).createSignedUrl(storagePath, 60 * 60);
+  return data?.signedUrl ?? null;
+}
+
 export async function GET() {
   try {
     const salonId = await getSessionSalonId();
@@ -42,14 +48,14 @@ export async function GET() {
     const cutsByBarber: Record<string, number> = {};
     (visits ?? []).forEach((v) => { if (v.barber_id) cutsByBarber[v.barber_id] = (cutsByBarber[v.barber_id] ?? 0) + 1; });
 
-    const barbers = rows.map((b) => ({
+    const barbers = await Promise.all(rows.map(async (b) => ({
       id: b.id,
       name: b.name,
       phone: b.phone ?? null,
       email: b.email ?? null,
-      photoUrl: b.photo_url ?? null,
+      photoUrl: await signedBarberPhoto(b.photo_url),
       cutsToday: cutsByBarber[b.id] ?? 0,
-    }));
+    })));
 
     return NextResponse.json({ barbers });
   } catch (err) {
@@ -95,8 +101,8 @@ export async function POST(req: NextRequest) {
           contentType: photoMediaType ?? "image/jpeg", upsert: true,
         });
         if (!upErr) {
-          photoUrl = db.storage.from(VISIT_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
-          await db.from("barbers").update({ photo_url: photoUrl }).eq("id", barber.id);
+          await db.from("barbers").update({ photo_url: path }).eq("id", barber.id);
+          photoUrl = await signedBarberPhoto(path);
         }
       } catch (e) {
         console.warn("[barbers] photo upload failed (non-fatal):", e);

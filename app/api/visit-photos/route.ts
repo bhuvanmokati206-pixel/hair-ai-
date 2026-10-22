@@ -10,6 +10,20 @@ import {
   getVisitPhotos,
   type VisitPhotoInput,
 } from "@/lib/visitPhotos";
+import { getSessionSalonId } from "@/lib/auth";
+import { getServiceClient } from "@/lib/supabase";
+
+async function authorizeVisit(visitId: string): Promise<boolean> {
+  const salonId = await getSessionSalonId();
+  if (!salonId) return false;
+  const { data: visit } = await getServiceClient()
+    .from("visits")
+    .select("id")
+    .eq("id", visitId)
+    .eq("salon_id", salonId)
+    .maybeSingle();
+  return !!visit;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,6 +32,7 @@ export async function POST(req: NextRequest) {
     if (!visitId || !Array.isArray(photos) || photos.length === 0) {
       return NextResponse.json({ error: "visitId and photos required" }, { status: 400 });
     }
+    if (!(await authorizeVisit(visitId))) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
     await ensureBucket();
     const saved = await saveVisitPhotos(visitId, photos);
@@ -40,6 +55,7 @@ export async function PATCH(req: NextRequest) {
     if (!visitId || !photoId) {
       return NextResponse.json({ error: "visitId and photoId required" }, { status: 400 });
     }
+    if (!(await authorizeVisit(visitId))) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
     await setHeroPhoto(visitId, photoId);
     return NextResponse.json({ ok: true });
@@ -55,6 +71,7 @@ export async function GET(req: NextRequest) {
     if (!visitId) {
       return NextResponse.json({ error: "visitId required" }, { status: 400 });
     }
+    if (!(await authorizeVisit(visitId))) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
 
     return NextResponse.json({ photos: await getVisitPhotos(visitId) });
   } catch (err) {

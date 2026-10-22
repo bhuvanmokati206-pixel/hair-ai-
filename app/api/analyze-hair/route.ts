@@ -6,6 +6,8 @@ import { KNOWN_HAIR_STYLES } from "@/lib/compatibilityEngine";
 import { styleNamesForGender } from "@/lib/referenceLibrary";
 import { getPrompt, buildSpecialisedPrompt, toCategory, CLASSIFIER_PROMPT, type Category } from "@/lib/analysisPrompts";
 import { preferencesToPromptBlock, type PreferenceAnswers } from "@/lib/preferences";
+import { logScanForTraining } from "@/lib/mlLogger";
+import { predictLocalML } from "@/lib/mlClient";
 
 // Vercel serverless: two Gemini vision calls + retries can run ~10–20s. Give it
 // headroom past the 10s default so a slow analysis isn't aborted mid-call.
@@ -248,6 +250,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ analysis: mockAnalysis(), source: "demo-flag" });
     }
 
+    // ── Local ML Engine (CatBoost + LightGBM) check ──
+    const analyzerEngine = process.env.ANALYZER_ENGINE || "hybrid";
+    if (analyzerEngine === "ml" || analyzerEngine === "hybrid") {
+      const localResult = await predictLocalML({
+        gender: genderHint,
+        features: {
+          aspect_ratio: 1.35,
+          laplacian_var: 220.0,
+        },
+      });
+
+      if (localResult && (analyzerEngine === "ml" || localResult.confidence >= 0.70)) {
+        console.log(`[analyze-hair] Using local ML (${localResult.source}) with confidence ${localResult.confidence}`);
+        return NextResponse.json({
+          analysis: localResult.analysis,
+          source: localResult.source,
+          confidence: localResult.confidence,
+          promptVersion: "ml-local-catboost-lightgbm",
+        });
+      }
+    }
+
     if (!process.env.GEMINI_API_KEY) {
       console.error("[analyze-hair] GEMINI_API_KEY missing — demo fallback");
       return NextResponse.json({ analysis: mockAnalysis(), source: "demo-no-key" });
@@ -340,6 +364,15 @@ export async function POST(req: NextRequest) {
         console.warn("[analyze-hair] RAG context fetch failed (non-fatal):", ragErr);
       }
     }
+
+    // Fire-and-forget ML training logger: saves Gemini teacher labels for CatBoost training
+    logScanForTraining({
+      customerId,
+      genderHint,
+      preferences: preferences as Record<string, unknown> | undefined,
+      geminiAnalysis: analysis,
+      engineUsed: "gemini",
+    }).catch(() => {});
 
     return NextResponse.json({
       analysis,

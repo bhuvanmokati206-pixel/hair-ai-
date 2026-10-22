@@ -9,6 +9,7 @@
 import { getServiceClient } from "./supabase";
 import { getSalonCredentials, sendTemplateWithCreds, type SalonCredentials } from "./whatsapp";
 import { renderTemplate } from "./whatsappTemplates";
+import { createVisitPhotoSignedUrl } from "./visitPhotos";
 
 export type MessageType = "review" | "rebook" | "booking_confirm" | "custom";
 export type MessageStatus = "pending" | "sending" | "sent" | "failed" | "cancelled";
@@ -24,6 +25,7 @@ export type QueuedMessage = {
     to?: string;
     bodyParams?: string[];
     headerImageUrl?: string;
+    headerImagePath?: string;
     languageCode?: string;
   };
   send_at: string;
@@ -49,6 +51,7 @@ export async function enqueueMessage(params: {
   to: string;
   bodyParams?: string[];
   headerImageUrl?: string;
+  headerImagePath?: string;
   languageCode?: string;
 }): Promise<{ id: string } | null> {
   const db = getServiceClient();
@@ -66,6 +69,7 @@ export async function enqueueMessage(params: {
         to:             params.to,
         bodyParams:     params.bodyParams ?? [],
         headerImageUrl: params.headerImageUrl,
+        headerImagePath: params.headerImagePath,
         languageCode:   params.languageCode ?? "en",
       },
     })
@@ -90,7 +94,7 @@ export async function enqueueMessage(params: {
  * out, which is also when ended_at is set — the review timer counts from the end
  * of the visit, not the start.
  *
- * `heroImageUrl` is the customer's generated look; it is what makes the rebook
+ * `heroImagePath` is the customer's generated look; it is what makes the rebook
  * message persuasive, so that one is skipped entirely without it.
  */
 export async function enqueuePostVisitMessages(params: {
@@ -102,7 +106,7 @@ export async function enqueuePostVisitMessages(params: {
   salonName: string;
   barberName?: string;
   styleName: string;
-  heroImageUrl?: string;
+  heroImagePath?: string;
   reviewAfterMinutes?: number;
   rebookAfterDays?: number;
 }) {
@@ -130,7 +134,7 @@ export async function enqueuePostVisitMessages(params: {
   });
 
   let rebook = null;
-  if (params.heroImageUrl) {
+  if (params.heroImagePath) {
     rebook = await enqueueMessage({
       salonId: params.salonId,
       customerId: params.customerId,
@@ -140,7 +144,7 @@ export async function enqueuePostVisitMessages(params: {
       sendAt: rebookAt,
       to: params.to,
       bodyParams: [params.salonName],
-      headerImageUrl: params.heroImageUrl,
+      headerImagePath: params.heroImagePath,
     });
   } else {
     console.warn(`[queue] visit ${params.visitId} has no hero image — skipping rebook`);
@@ -220,7 +224,7 @@ export async function dispatchDueMessages(batchSize = 25) {
 
       if (simulate) {
         const preview = renderTemplate(msg.template_name ?? "", msg.payload.bodyParams ?? []);
-        console.log(`[queue:SIM] → ${msg.payload.to}: ${preview}${msg.payload.headerImageUrl ? " [+image]" : ""}`);
+        console.log(`[queue:SIM] → ${msg.payload.to}: ${preview}${(msg.payload.headerImageUrl || msg.payload.headerImagePath) ? " [+image]" : ""}`);
         await markSent(msg.id, `sim-${msg.id.slice(0, 8)}`);
         sent++;
         continue;
@@ -232,12 +236,15 @@ export async function dispatchDueMessages(batchSize = 25) {
         credsCache.set(msg.salon_id, creds);
       }
 
+      const generatedImageUrl = msg.payload.headerImagePath
+        ? await createVisitPhotoSignedUrl(msg.payload.headerImagePath)
+        : undefined;
       const result = await sendTemplateWithCreds(creds, {
         to:             msg.payload.to ?? "",
         templateName:   msg.template_name ?? "",
         languageCode:   msg.payload.languageCode,
         bodyParams:     msg.payload.bodyParams,
-        headerImageUrl: msg.payload.headerImageUrl,
+        headerImageUrl: generatedImageUrl ?? msg.payload.headerImageUrl,
       });
 
       if (result.ok) {

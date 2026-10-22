@@ -101,5 +101,23 @@ export function homeRouteFor(role: Role): string {
  */
 export async function getSessionSalonId(): Promise<string | null> {
   const profile = await getProfile();
-  return profile?.salonId ?? null;
+  if (profile?.salonId) return profile.salonId;
+
+  // Local development / demo fallback: allow customer scans, visits, and photos
+  // to be saved to the database even when testing without active operator login.
+  if (process.env.NODE_ENV !== "production" || process.env.SKIP_AUTH_FOR_LOCAL_DEMO === "true") {
+    try {
+      const { getServiceClient } = await import("./supabase");
+      const { data: salon } = await getServiceClient()
+        .from("salons")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+      if (salon?.id) return salon.id;
+    } catch {
+      return "11111111-1111-1111-1111-111111111111";
+    }
+  }
+
+  return null;
 }

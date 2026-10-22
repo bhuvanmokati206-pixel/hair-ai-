@@ -1,0 +1,99 @@
+{
+  "feature_names": [
+    "length_delta_top",
+    "length_delta_side",
+    "is_length_sufficient",
+    "texture_matches",
+    "is_round_face",
+    "is_square_face",
+    "is_oval_face",
+    "customer_is_male"
+  ],
+  "candidate_styles": [
+    "buzz cut",
+    "caesar cut",
+    "crew cut",
+    "french crop",
+    "textured crop",
+    "fade with quiff",
+    "undercut",
+    "side part",
+    "slick back",
+    "pompadour",
+    "quiff",
+    "bob",
+    "lob",
+    "curtain bangs",
+    "shag",
+    "wolf cut",
+    "pixie cut"
+  ],
+  "style_requirements": {
+    "buzz cut": {
+      "minTopCm": 0.5,
+      "minSideCm": 0.5,
+      "suit_texture": "all"
+    },
+    "caesar cut": {
+      "minTopCm": 3.0,
+      "minSideCm": 1.0,
+      "suit_texture": "straight"
+    },
+    "french crop": {
+      "minTopCm": 4.0,
+      "minSideCm": 1.0,
+      "suit_texture": "all"
+    },
+    "textured crop": {
+      "minTopCm": 5.0,
+      "minSideCm": 2.0,
+      "suit_texture": "wavy"
+    },
+    "fade with quiff": {
+      "minTopCm": 6.0,
+      "minSideCm": 1.0,
+      "suit_texture": "wavy"
+    },
+    "side part": {
+      "minTopCm": 6.0,
+      "minSideCm": 2.0,
+      "suit_texture": "straight"
+    },
+    "slick back": {
+      "minTopCm": 8.0,
+      "minSideCm": 2.0,
+      "suit_texture": "straight"
+    },
+    "pompadour": {
+      "minTopCm": 8.0,
+      "minSideCm": 2.0,
+      "suit_texture": "wavy"
+    },
+    "quiff": {
+      "minTopCm": 7.0,
+      "minSideCm": 2.0,
+      "suit_texture": "wavy"
+    },
+    "bob": {
+      "minTopCm": 8.0,
+      "minSideCm": 6.0,
+      "suit_texture": "all"
+    },
+    "lob": {
+      "minTopCm": 12.0,
+      "minSideCm": 10.0,
+      "suit_texture": "all"
+    },
+    "wolf cut": {
+      "minTopCm": 12.0,
+      "minSideCm": 8.0,
+      "suit_texture": "curly"
+    },
+    "pixie cut": {
+      "minTopCm": 3.0,
+      "minSideCm": 1.0,
+      "suit_texture": "all"
+    }
+  },
+  "model_file": "lightgbm_ranker.txt"
+}

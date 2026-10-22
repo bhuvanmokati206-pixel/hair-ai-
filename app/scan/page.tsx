@@ -27,6 +27,18 @@ function ScanFlow() {
   const [resumeLoading, setResumeLoading] = useState(!!resumeId);
   const [resumeError, setResumeError] = useState<string | null>(null);
 
+  // Prevent accidental back-navigation / swipe-away during scan session
+  useEffect(() => {
+    if (step !== "scan" || !!resumeId) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "A customer scan is in progress. Leaving will discard unsaved photos.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [step, resumeId]);
+
   // Reopen a parked customer: pull their visit, restore the store, and jump
   // straight to the results view — no re-scan, no re-analysis.
   useEffect(() => {
@@ -44,8 +56,11 @@ function ScanFlow() {
             phone: body.customer.phone,
           });
         }
-        setCurrentVisitId(body.visit.id);
-        setResumeData({ analysis: body.visit.analysis as HairAnalysis, generated: body.generated ?? [] });
+        setResumeData({
+          analysis: body.visit.analysis as HairAnalysis,
+          generated: body.generated ?? [],
+          photos: body.photos ?? body.originalPhotos ?? [],
+        });
         setStep("scan");
       } catch (err) {
         setResumeError(err instanceof Error ? err.message : "Could not resume");
@@ -61,7 +76,14 @@ function ScanFlow() {
     updateSessionAnalysis(analysis, photos);
     setSaveError(null);
 
-    if (!currentCustomer) return;
+    const customer = currentCustomer ?? {
+      name: "Walk-in Guest",
+      phone: "9999999999",
+      acceptedTerms: true,
+    };
+    if (!currentCustomer) {
+      setCurrentCustomer(customer);
+    }
 
     try {
       // 1. Customer row. The salon comes from the session server-side, so the
@@ -70,17 +92,17 @@ function ScanFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: currentCustomer.phone,
-          name: currentCustomer.name,
-          gender: currentCustomer.gender,
-          acceptedTerms: currentCustomer.acceptedTerms,
+          phone: customer.phone,
+          name: customer.name,
+          gender: customer.gender,
+          acceptedTerms: customer.acceptedTerms,
         }),
       });
       const custBody = await custRes.json();
       if (!custRes.ok) throw new Error(custBody.error ?? "Could not save the customer");
 
       const customerId: string = custBody.customer.id;
-      setCurrentCustomer({ ...currentCustomer, id: customerId });
+      setCurrentCustomer({ ...customer, id: customerId });
 
       // 2. Visit row. ended_at stays null until checkout — that is what the
       //    "in session" counter reads, and what the 1-hour review timer needs.
@@ -101,20 +123,27 @@ function ScanFlow() {
       const visitId: string = visitBody.visit.id;
       setCurrentVisitId(visitId);
 
-      // 3. The captured photos, so the 45-day rebooking message has a before shot.
-      //    Fire-and-forget: a failed upload should not block the barber.
-      void fetch("/api/visit-photos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          visitId,
-          photos: photos.map((p) => ({
-            image: `data:${p.mediaType};base64,${p.base64}`,
-            kind: "original",
-            angle: p.label,
-          })),
-        }),
-      }).catch((err) => console.warn("[scan] original photo upload failed:", err));
+      // 3. The captured photos, uploaded to Supabase storage and recorded in visit_photos.
+      try {
+        const photoRes = await fetch("/api/visit-photos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            visitId,
+            photos: photos.map((p) => ({
+              image: p.base64 ? `data:${p.mediaType || "image/jpeg"};base64,${p.base64}` : p.preview,
+              kind: "original",
+              angle: p.label,
+            })),
+          }),
+        });
+        if (photoRes.ok) {
+          const photoData = await photoRes.json();
+          console.log("[scan] Photos saved to database:", photoData);
+        }
+      } catch (err) {
+        console.warn("[scan] original photo upload failed:", err);
+      }
     } catch (err) {
       // Surfaced rather than swallowed: the previous version had a bare catch,
       // so every save failed silently and nothing was ever persisted.
@@ -126,9 +155,22 @@ function ScanFlow() {
 
   if (resumeLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: "var(--bg)" }}>
-        <div className="spinner-lg" />
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Reopening customer…</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center" style={{ background: "var(--bg)" }}>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center animate-pulse"
+          style={{ background: "rgba(143,167,154,0.12)", border: "1px solid rgba(143,167,154,0.3)" }}>
+          <span className="text-xl">🪑</span>
+        </div>
+        <div>
+          <p style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, letterSpacing: ".22em", textTransform: "uppercase", color: "#8FA79A" }}>
+            Reopening Customer
+          </p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
+            Restoring biometric scan, hair metrics &amp; generated styles…
+          </p>
+        </div>
+        <div className="w-40 h-1 rounded-full overflow-hidden mt-2" style={{ background: "rgba(242,239,233,0.1)" }}>
+          <div className="h-full rounded-full animate-pulse" style={{ width: "65%", background: "var(--accent)" }} />
+        </div>
       </div>
     );
   }

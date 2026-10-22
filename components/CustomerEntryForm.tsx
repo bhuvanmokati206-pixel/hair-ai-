@@ -139,6 +139,8 @@ export default function CustomerEntryForm({ onContinue }: Props) {
           <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <span style={LABEL}>Customer name</span>
             <input type="text" placeholder="e.g. Rahul Sharma" value={name} autoFocus
+              autoComplete="name"
+              autoCorrect="off"
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleContinue()}
               style={INPUT} />
@@ -155,7 +157,7 @@ export default function CustomerEntryForm({ onContinue }: Props) {
             <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, borderBottom: "1px solid rgba(242,239,233,.2)", paddingBottom: 10 }}>
                 <span style={{ fontSize: 16, color: ACC, letterSpacing: ".04em" }}>+91</span>
-                <input type="tel" inputMode="numeric" placeholder="98765 43210" value={phone}
+                <input type="tel" inputMode="numeric" pattern="[0-9]*" autoComplete="tel" placeholder="98765 43210" value={phone}
                   onChange={(e) => { setPhone(e.target.value); setReturning(null); }}
                   style={{ flex: 1, background: "transparent", border: 0, color: INK, fontSize: 16, letterSpacing: ".09em", padding: "5px 0 0", outline: "none", fontFamily: "inherit" }} />
               </span>

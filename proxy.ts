@@ -14,9 +14,10 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_ROUTES = ["/login", "/splash", "/onboarding", "/otp"];
 
 export async function proxy(request: NextRequest) {
-  // Escape hatch for local testing without auth. Must be unset in production —
-  // it disables every check below.
-  if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true") {
+  // Local-only escape hatch. This must never be controlled by a NEXT_PUBLIC_
+  // variable: those values are embedded in the browser build and are too easy
+  // to accidentally carry into a production deployment.
+  if (process.env.NODE_ENV !== "production" && process.env.SKIP_AUTH_FOR_LOCAL_DEMO === "true") {
     return NextResponse.next();
   }
 
@@ -41,12 +42,46 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refreshes an expiring token and writes the new cookie via setAll above.
-  // Do not remove: without it sessions silently die and users get logged out.
-  const { data: { user } } = await supabase.auth.getUser();
+  // Only query Supabase auth if an auth cookie actually exists in the request.
+  // When no cookie exists, calling getUser() makes an unnecessary remote network call
+  // that can hang or timeout for 30-40 seconds.
+  const allCookies = request.cookies.getAll();
+  const hasAuthToken = allCookies.some((c) => c.name.includes("-auth-token") || c.name.startsWith("sb-"));
+  let user = null;
+  if (hasAuthToken) {
+    const { data } = await supabase.auth.getUser();
+    user = data?.user ?? null;
+  }
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_ROUTES.some((r) => path === r || path.startsWith(`${r}/`));
+
+  // Cookie-authenticated writes must come from this application. Requests that
+  // intentionally originate server-to-server (the webhook and cron endpoints)
+  // are excluded by the matcher below and authenticate independently.
+  if (path.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    const origin = request.headers.get("origin");
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        const hostHeader = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+        const isSameHost = originUrl.host === hostHeader || origin === request.nextUrl.origin;
+        const isDev = process.env.NODE_ENV !== "production";
+        const isLocalDevOrigin = isDev && (
+          originUrl.hostname === "localhost" ||
+          originUrl.hostname === "127.0.0.1" ||
+          originUrl.hostname.startsWith("192.168.") ||
+          originUrl.hostname.startsWith("10.") ||
+          originUrl.hostname.startsWith("172.")
+        );
+        if (!isSameHost && !isLocalDevOrigin) {
+          return NextResponse.json({ error: "Cross-origin request rejected" }, { status: 403 });
+        }
+      } catch {
+        return NextResponse.json({ error: "Invalid origin" }, { status: 400 });
+      }
+    }
+  }
 
   if (!user && !isPublic) {
     // API routes get JSON, not a redirect. A fetch() following a 307 to /login
@@ -56,18 +91,17 @@ export async function proxy(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    // Send them back where they were headed once signed in.
-    url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+    const proto = request.headers.get("x-forwarded-proto") || (request.nextUrl.protocol.replace(":", "") || "http");
+    const redirectUrl = new URL(`/login?next=${encodeURIComponent(path)}`, `${proto}://${host}`);
+    return NextResponse.redirect(redirectUrl);
   }
 
   if (user && path === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/home";
-    url.search = "";
-    return NextResponse.redirect(url);
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+    const proto = request.headers.get("x-forwarded-proto") || (request.nextUrl.protocol.replace(":", "") || "http");
+    const redirectUrl = new URL("/home", `${proto}://${host}`);
+    return NextResponse.redirect(redirectUrl);
   }
 
   return response;

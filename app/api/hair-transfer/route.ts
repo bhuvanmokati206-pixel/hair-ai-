@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
 import { Jimp } from "jimp";
+import { fetchSafeRemoteImage } from "@/lib/remoteImage";
+import { getVisitPhotos } from "@/lib/visitPhotos";
 
 export const maxDuration = 60;
 
 const REPLICATE_MODEL = "google/nano-banana-2";
 
 async function urlToDataUri(url: string): Promise<string> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`reference fetch ${res.status}`);
-  const type = res.headers.get("content-type") ?? "image/jpeg";
-  if (!type.startsWith("image/")) throw new Error("reference is not an image");
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length > 8 * 1024 * 1024) throw new Error("reference image too large");
-  return `data:${type};base64,${buf.toString("base64")}`;
+  const { buffer, contentType } = await fetchSafeRemoteImage(url);
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
 }
 
 // Cuts the 2×2 collage into four standalone angle images: [front, left, right, back]
@@ -49,6 +46,8 @@ export async function POST(req: NextRequest) {
     const {
       targetBase64,
       targetMediaType = "image/jpeg",
+      targetUrl,
+      visitId,
       referenceUrl,
       referenceBase64,
       referenceMediaType = "image/jpeg",
@@ -56,23 +55,46 @@ export async function POST(req: NextRequest) {
     } = (await req.json()) as {
       targetBase64?: string;
       targetMediaType?: string;
+      targetUrl?: string;
+      visitId?: string;
       referenceUrl?: string;
       referenceBase64?: string;
       referenceMediaType?: string;
       styleName?: string;
     };
 
-    if (!targetBase64) {
+    let targetUri: string | null = null;
+    if (targetBase64) {
+      const cleanTargetBase64 = targetBase64.includes(";base64,")
+        ? targetBase64.split(";base64,")[1]
+        : targetBase64;
+      targetUri = `data:${targetMediaType};base64,${cleanTargetBase64}`;
+    } else if (targetUrl) {
+      try {
+        targetUri = await urlToDataUri(targetUrl);
+      } catch (err) {
+        console.warn("[hair-transfer] failed to load targetUrl:", targetUrl, err);
+      }
+    }
+
+    if (!targetUri && visitId) {
+      try {
+        const dbPhotos = await getVisitPhotos(visitId);
+        const front = dbPhotos.find((p) => p.kind === "original" && (p.angle === "front" || !p.angle) && p.url);
+        if (front?.url) {
+          targetUri = await urlToDataUri(front.url);
+        }
+      } catch (err) {
+        console.warn("[hair-transfer] failed to load target photo from visitId:", visitId, err);
+      }
+    }
+
+    if (!targetUri) {
       return NextResponse.json({ error: "A customer photo is required." }, { status: 400 });
     }
     if (!referenceUrl && !referenceBase64) {
       return NextResponse.json({ error: "A reference hairstyle is required." }, { status: 400 });
     }
-
-    const cleanTargetBase64 = targetBase64.includes(";base64,")
-      ? targetBase64.split(";base64,")[1]
-      : targetBase64;
-    const targetUri = `data:${targetMediaType};base64,${cleanTargetBase64}`;
 
     if (process.env.USE_MOCK_ANALYSIS === "true" || !process.env.REPLICATE_API_TOKEN) {
       // Return target image for demo simulation if token not configured

@@ -18,7 +18,7 @@ const MICRO: React.CSSProperties = {
 const ANGLE_LABEL: Record<string, string> = { front: "Front", left: "Left", right: "Right", back: "Back" };
 const cap = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : "");
 
-export type DashPhoto = { preview: string; label: string };
+export type DashPhoto = { preview: string; label: string; base64?: string; mediaType?: string };
 export type AppliedChip = { label: string; tone: "hair" | "colour" | "beard" };
 
 const CHIP_TONE: Record<AppliedChip["tone"], { bg: string; color: string; icon: string }> = {
@@ -51,7 +51,19 @@ export default function CustomerDashboardView({
   const [scanActive, setScanActive] = useState(0);
 
   const scanSlides: CoverflowSlide[] = useMemo(
-    () => photos.map((p) => ({ src: p.preview, alt: ANGLE_LABEL[p.label] ?? p.label, title: ANGLE_LABEL[p.label] ?? p.label })),
+    () =>
+      photos
+        .map((p) => {
+          const src =
+            p.preview ||
+            (p.base64 ? `data:${p.mediaType || "image/jpeg"};base64,${p.base64}` : "");
+          return {
+            src,
+            alt: ANGLE_LABEL[p.label] ?? p.label,
+            title: ANGLE_LABEL[p.label] ?? p.label,
+          };
+        })
+        .filter((s) => Boolean(s.src)),
     [photos],
   );
 
@@ -119,7 +131,7 @@ export default function CustomerDashboardView({
               </div>
             )}
           </>
-        ) : (
+        ) : scanSlides.length > 0 ? (
           /* No generated look (standalone dashboard) — show the scan */
           <div style={{ marginTop: 6 }}>
             <CoverflowCarousel
@@ -134,7 +146,7 @@ export default function CustomerDashboardView({
               {scanSlides[scanActive]?.title ?? ""}
             </div>
           </div>
-        )}
+        ) : null}
 
         {analysis ? (
           <div style={{ padding: "24px 20px 0", display: "flex", flexDirection: "column", gap: 16 }}>

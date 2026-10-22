@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { CapturedPhoto } from "@/components/CameraCapture";
 import { HairAnalysis } from "@/components/HairAIAutomation";
 
@@ -47,34 +48,90 @@ type Store = {
   setCurrentBarberId: (id: string | null) => void;
 };
 
-export const useStore = create<Store>((set) => ({
-  profile: null,
-  setProfile: (profile) => set({ profile }),
+export const useStore = create<Store>()(
+  persist(
+    (set) => ({
+      profile: null,
+      setProfile: (profile) => set({ profile }),
 
-  currentCustomer: null,
-  setCurrentCustomer: (currentCustomer) => set({ currentCustomer }),
+      currentCustomer: null,
+      setCurrentCustomer: (currentCustomer) => set({ currentCustomer }),
 
-  currentVisitId: null,
-  setCurrentVisitId: (currentVisitId) => set({ currentVisitId }),
+      currentVisitId: null,
+      setCurrentVisitId: (currentVisitId) => set({ currentVisitId }),
 
-  currentBarberId: null,
-  setCurrentBarberId: (currentBarberId) => set({ currentBarberId }),
+      currentBarberId: null,
+      setCurrentBarberId: (currentBarberId) => set({ currentBarberId }),
 
-  currentSession: null,
-  setCurrentSession: (currentSession) => set({ currentSession }),
-  updateSessionAnalysis: (analysis, photos) =>
-    set((s) => ({
-      currentSession: s.currentSession
-        ? { ...s.currentSession, analysis, photos }
-        : null,
-    })),
-  addSavedStyle: (styleName, imageUrl) =>
-    set((s) => ({
-      currentSession: s.currentSession
-        ? {
-            ...s.currentSession,
-            savedStyles: [...s.currentSession.savedStyles, { styleName, imageUrl }],
+      currentSession: null,
+      setCurrentSession: (currentSession) => set({ currentSession }),
+      updateSessionAnalysis: (analysis, photos) =>
+        set((s) => ({
+          currentSession: s.currentSession
+            ? { ...s.currentSession, analysis, photos }
+            : {
+                customer: s.currentCustomer ?? { name: "Walk-in Guest", phone: "9999999999" },
+                analysis,
+                photos,
+                savedStyles: [],
+              },
+        })),
+      addSavedStyle: (styleName, imageUrl) =>
+        set((s) => ({
+          currentSession: s.currentSession
+            ? {
+                ...s.currentSession,
+                savedStyles: [...s.currentSession.savedStyles, { styleName, imageUrl }],
+              }
+            : null,
+        })),
+    }),
+    {
+      name: "trimview-client-session",
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => {
+          try {
+            return typeof window !== "undefined" ? localStorage.getItem(name) : null;
+          } catch {
+            return null;
           }
-        : null,
-    })),
-}));
+        },
+        setItem: (name: string, value: string) => {
+          try {
+            if (typeof window !== "undefined") localStorage.setItem(name, value);
+          } catch (e) {
+            console.warn("[store] Storage quota exceeded, skipping non-essential persist:", e);
+          }
+        },
+        removeItem: (name: string) => {
+          try {
+            if (typeof window !== "undefined") localStorage.removeItem(name);
+          } catch {
+            // ignore
+          }
+        },
+      })),
+      partialize: (state) => ({
+        profile: state.profile,
+        currentCustomer: state.currentCustomer,
+        currentVisitId: state.currentVisitId,
+        currentBarberId: state.currentBarberId,
+        currentSession: state.currentSession
+          ? {
+              customer: state.currentSession.customer,
+              analysis: state.currentSession.analysis,
+              savedStyles: state.currentSession.savedStyles,
+              // Strip heavy base64 strings so they never exceed the 5MB browser quota.
+              // Persistent storage in Supabase Storage holds the full images.
+              photos: (state.currentSession.photos || []).map((p) => ({
+                label: p.label,
+                mediaType: p.mediaType,
+                preview: p.preview?.startsWith("http") ? p.preview : "",
+                base64: "",
+              })),
+            }
+          : null,
+      }),
+    }
+  )
+);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { getSessionSalonId } from "@/lib/auth";
+import { getVisitPhotos } from "@/lib/visitPhotos";
 
 export async function GET(req: NextRequest) {
   try {
@@ -60,10 +61,12 @@ export async function GET(req: NextRequest) {
       created_at: string;
     };
 
-    const visits = (rawVisits ?? []).map((v) => {
+    const visits = await Promise.all((rawVisits ?? []).map(async (v) => {
       const cust = v.customers as unknown as { id: string; name: string | null; phone: string } | null;
       const barb = v.barbers as unknown as { id: string; name: string } | null;
-      const photos = ((v.visit_photos ?? []) as RawPhoto[]).filter((p) => !!p.url);
+      // Storage is private. Generate short-lived URLs only after this route has
+      // confirmed the caller's salon scope above.
+      const photos = (await getVisitPhotos(v.id)) as RawPhoto[];
 
       const beforePhotos = photos.filter((p) => p.kind === "original");
       const afterPhotos = photos.filter((p) => p.kind === "generated");
@@ -100,7 +103,7 @@ export async function GET(req: NextRequest) {
           originalFront: originalFrontPhoto,
         },
       };
-    });
+    }));
 
     return NextResponse.json({ ok: true, visits });
   } catch (err) {

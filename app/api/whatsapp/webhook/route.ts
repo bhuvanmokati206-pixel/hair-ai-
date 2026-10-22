@@ -7,6 +7,7 @@
 //   • delivery/read/failed status → update the queued message.
 
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "node:crypto";
 import { getServiceClient } from "@/lib/supabase";
 import { optOutCustomer } from "@/lib/messageQueue";
 import { normalizePhone } from "@/lib/whatsapp";
@@ -26,9 +27,22 @@ export async function GET(req: NextRequest) {
 
 const STOP_WORDS = new Set(["stop", "unsubscribe", "opt out", "optout"]);
 
+function hasValidSignature(rawBody: string, signature: string | null): boolean {
+  const secret = process.env.WHATSAPP_APP_SECRET;
+  if (!secret || !signature?.startsWith("sha256=")) return false;
+  const expected = `sha256=${crypto.createHmac("sha256", secret).update(rawBody).digest("hex")}`;
+  const provided = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  return provided.length === expectedBuffer.length && crypto.timingSafeEqual(provided, expectedBuffer);
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (!hasValidSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+      return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
     const db = getServiceClient();
 
     // Meta batches everything under entry[].changes[].value.

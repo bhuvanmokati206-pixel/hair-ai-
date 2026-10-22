@@ -109,6 +109,7 @@ export type ResumeGeneratedImage = {
 export type ResumeData = {
   analysis: HairAnalysis;
   generated: ResumeGeneratedImage[];
+  photos?: CapturedPhoto[];
 };
 
 type Props = {
@@ -236,6 +237,28 @@ function buildResumedStyles(resume: ResumeData): GeneratedStyle[] {
   });
 }
 
+function buildAnglePhotos(photos: CapturedPhoto[]) {
+  const anglePhotos: Record<string, { base64: string; mediaType: string; url?: string }> = {};
+  for (const label of ["front", "left", "right", "back"]) {
+    const p = photos.find((ph) => ph.label === label);
+    if (p) {
+      anglePhotos[label] = {
+        base64: p.base64 || (p.preview?.startsWith("data:") ? p.preview.split(",")[1] : ""),
+        mediaType: p.mediaType || "image/jpeg",
+        url: p.preview?.startsWith("http") ? p.preview : undefined,
+      };
+    }
+  }
+  if (Object.keys(anglePhotos).length === 0 && photos[0]) {
+    anglePhotos.front = {
+      base64: photos[0].base64 || (photos[0].preview?.startsWith("data:") ? photos[0].preview.split(",")[1] : ""),
+      mediaType: photos[0].mediaType || "image/jpeg",
+      url: photos[0].preview?.startsWith("http") ? photos[0].preview : undefined,
+    };
+  }
+  return anglePhotos;
+}
+
 export default function HairAIAutomation({ customerName, onAnalysisComplete, onReset, onContinueToHaircut, resumeData }: Props) {
   // Set by the scan page once the visit row exists. Generated images are filed
   // under it; without a visit there is nothing to attach them to.
@@ -246,7 +269,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
   const customerGender = useStore((s) => s.currentCustomer?.gender);
   const customerId = useStore((s) => s.currentCustomer?.id);
   const [step, setStep] = useState<Step>(resumeData ? "results" : "capture");
-  const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
+  const [photos, setPhotos] = useState<CapturedPhoto[]>(resumeData?.photos ?? []);
   const [analysis, setAnalysis] = useState<HairAnalysis | null>(resumeData?.analysis ?? null);
   const [generatedStyles, setGeneratedStyles] = useState<GeneratedStyle[]>(
     resumeData ? buildResumedStyles(resumeData) : []
@@ -294,7 +317,10 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
       setRefBusy(true);
       try {
         const frontPhoto = photos.find((p) => p.label === "front") ?? photos[0];
-        if (!frontPhoto) throw new Error("Customer front photo is required.");
+        if (!frontPhoto && !currentVisitId) throw new Error("Customer front photo is required.");
+
+        const custBase64 = frontPhoto?.base64 || (frontPhoto?.preview?.startsWith("data:") ? frontPhoto.preview.split(",")[1] : undefined);
+        const custUrl = frontPhoto?.preview?.startsWith("http") ? frontPhoto.preview : undefined;
 
         // 1. Vision breakdown comparing customer actual hair & face with reference photo
         const analyzeRes = await fetch("/api/analyze-reference", {
@@ -303,8 +329,10 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
           body: JSON.stringify({
             imageBase64: refPhoto.base64,
             mediaType: refPhoto.mediaType,
-            customerPhotoBase64: frontPhoto.base64,
-            customerMediaType: frontPhoto.mediaType,
+            customerPhotoBase64: custBase64,
+            customerPhotoUrl: custUrl,
+            visitId: currentVisitId,
+            customerMediaType: frontPhoto?.mediaType || "image/jpeg",
             customerContext: {
               faceShape: analysis?.faceShape,
               hairLength: analysis?.hairLength,
@@ -321,8 +349,10 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            targetBase64: frontPhoto.base64,
-            targetMediaType: frontPhoto.mediaType,
+            targetBase64: custBase64,
+            targetUrl: custUrl,
+            visitId: currentVisitId,
+            targetMediaType: frontPhoto?.mediaType || "image/jpeg",
             referenceBase64: refPhoto.base64,
             referenceMediaType: refPhoto.mediaType,
             styleName: refAnalysis.styleName,

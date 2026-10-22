@@ -4,6 +4,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveVisit, updateVisitChoice, type ServiceType } from "@/lib/rag";
 import { getSessionSalonId } from "@/lib/auth";
+import { logBarberFeedback } from "@/lib/mlLogger";
+import { getServiceClient } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,10 +74,33 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "visitId required" }, { status: 400 });
     }
 
+    const salonId = await getSessionSalonId();
+    if (!salonId) return NextResponse.json({ error: "No salon for this account" }, { status: 403 });
+    const { data: visit } = await getServiceClient()
+      .from("visits")
+      .select("id")
+      .eq("id", visitId)
+      .eq("salon_id", salonId)
+      .maybeSingle();
+    if (!visit) return NextResponse.json({ error: "Visit not found" }, { status: 404 });
+
     await updateVisitChoice(visitId, {
       chosenStyle, chosenBeardStyle, barberNotes,
       customerRating, serviceType, barberId, endedAt,
     });
+
+    // Record for LightGBM LambdaMART ranking model
+    if (chosenStyle) {
+      const relevance = customerRating && customerRating >= 4 ? 3 : 2;
+      logBarberFeedback({
+        visitId,
+        chosenStyle,
+        customerRating,
+        relevanceGrade: relevance,
+        barberNotes,
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[save-visit] PATCH error:", err);

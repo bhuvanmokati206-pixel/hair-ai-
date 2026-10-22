@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { getSessionSalonId } from "@/lib/auth";
 import { updateVisitChoice, type VisitStatus } from "@/lib/rag";
-import { getHeroPhotoUrl } from "@/lib/visitPhotos";
+import { getHeroPhotoStoragePath } from "@/lib/visitPhotos";
 import { enqueuePostVisitMessages } from "@/lib/messageQueue";
 import { formatTriggerDemoText } from "@/lib/whatsappDemo";
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     if (!alreadyDone) {
       // No consent, no messages. Meta enforces this and so do we.
       if (customer?.wa_opt_in && !customer.opted_out_at && customer.phone) {
-        const heroUrl = await getHeroPhotoUrl(visitId);
+        const heroImagePath = await getHeroPhotoStoragePath(visitId);
         queued = await enqueuePostVisitMessages({
           salonId,
           customerId: visit.customer_id,
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
           salonName: salon?.name ?? "our salon",
           barberName: barber?.name ?? undefined,
           styleName: visit.chosen_style ?? "your new look",
-          heroImageUrl: heroUrl ?? undefined,
+          heroImagePath: heroImagePath ?? undefined,
           rebookAfterDays: salon?.rebook_after_days ?? 45,
         });
       }

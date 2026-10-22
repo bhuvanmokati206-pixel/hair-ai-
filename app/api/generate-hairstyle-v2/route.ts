@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
+import { getVisitPhotos } from "@/lib/visitPhotos";
 
 // Instruction-following image editor. Replaces the old
 // segment → inpaint → face-lock chain, which produced hard mask edges
@@ -150,13 +151,50 @@ function buildEditPrompt(
   ].filter(Boolean).join("\n\n");
 }
 
-type AnglePhoto = { base64: string; mediaType: string };
+type AnglePhoto = {
+  base64?: string;
+  mediaType?: string;
+  url?: string;
+  preview?: string;
+};
 type Angle = "front" | "left" | "right" | "back";
+
+async function resolveAnglePhoto(p?: AnglePhoto): Promise<{ base64: string; mediaType: string } | null> {
+  if (!p) return null;
+  let base64 = p.base64?.trim() || "";
+  let mediaType = p.mediaType || "image/jpeg";
+  const urlCandidate = p.url || p.preview;
+
+  if (!base64 && urlCandidate) {
+    if (urlCandidate.startsWith("data:")) {
+      const match = urlCandidate.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        mediaType = match[1];
+        base64 = match[2];
+      }
+    } else if (urlCandidate.startsWith("http://") || urlCandidate.startsWith("https://")) {
+      try {
+        const res = await fetch(urlCandidate);
+        if (res.ok) {
+          const contentType = res.headers.get("content-type")?.split(";")[0].trim() || "image/jpeg";
+          const buf = Buffer.from(await res.arrayBuffer());
+          base64 = buf.toString("base64");
+          mediaType = contentType;
+        }
+      } catch (err) {
+        console.warn("[generate-hairstyle-v2] failed to fetch photo from url:", urlCandidate, err);
+      }
+    }
+  }
+
+  if (!base64) return null;
+  return { base64, mediaType };
+}
 
 // Edits one angle photo with nano-banana-2 and returns it as a data URI.
 async function generateOneAngle(
   replicate: Replicate,
-  photo: AnglePhoto,
+  photo: { base64: string; mediaType: string },
   prompt: string
 ): Promise<string | null> {
   try {
@@ -193,11 +231,13 @@ export async function POST(req: NextRequest) {
   try {
     const {
       styleName, hairColor, hairTexture, includeBeard, customDescription,
-      photoBase64, photoMediaType, photos, hairLength, editTarget,
+      photoBase64, photoMediaType, photoUrl, photos, hairLength, editTarget,
+      visitId,
     } = await req.json() as {
       styleName?: string; hairColor?: string; hairTexture?: string; includeBeard?: boolean;
-      customDescription?: string; photoBase64?: string; photoMediaType?: string;
+      customDescription?: string; photoBase64?: string; photoMediaType?: string; photoUrl?: string;
       photos?: Partial<Record<Angle, AnglePhoto>>;
+      visitId?: string;
       hairLength?: string; editTarget?: "hair" | "beard";
     };
 
@@ -208,12 +248,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "REPLICATE_API_TOKEN not configured" }, { status: 503 });
     }
 
-    const anglePhotos: Partial<Record<Angle, AnglePhoto>> = photos ?? {};
-    if (photoBase64 && photoMediaType && !anglePhotos.front) {
-      anglePhotos.front = { base64: photoBase64, mediaType: photoMediaType };
+    const rawAnglePhotos: Partial<Record<Angle, AnglePhoto>> = photos ?? {};
+    if ((photoBase64 || photoUrl) && !rawAnglePhotos.front) {
+      rawAnglePhotos.front = {
+        base64: photoBase64,
+        mediaType: photoMediaType,
+        url: photoUrl,
+      };
     }
+
+    // Resolve any data URIs or HTTP storage URLs to base64
+    const resolvedAnglePhotos: Partial<Record<Angle, { base64: string; mediaType: string }>> = {};
+    await Promise.all(
+      (["front", "left", "right", "back"] as Angle[]).map(async (ang) => {
+        const raw = rawAnglePhotos[ang];
+        if (raw) {
+          const res = await resolveAnglePhoto(raw);
+          if (res) resolvedAnglePhotos[ang] = res;
+        }
+      })
+    );
+
+    // If photos are still empty and visitId is provided, retrieve original photos from Supabase Storage
+    if (Object.keys(resolvedAnglePhotos).length === 0 && visitId) {
+      try {
+        const dbPhotos = await getVisitPhotos(visitId);
+        const originals = dbPhotos.filter((p) => p.kind === "original" && p.url);
+        await Promise.all(
+          originals.map(async (op) => {
+            const ang = (op.angle as Angle) || "front";
+            if (!resolvedAnglePhotos[ang] && op.url) {
+              const res = await resolveAnglePhoto({ url: op.url });
+              if (res) resolvedAnglePhotos[ang] = res;
+            }
+          })
+        );
+      } catch (err) {
+        console.warn("[generate-hairstyle-v2] failed to load photos from visitId:", visitId, err);
+      }
+    }
+
     const orderedAngles: Angle[] = ["front", "left", "right", "back"];
-    const primaryAngleKey = orderedAngles.find((a) => anglePhotos[a]?.base64);
+    const primaryAngleKey = orderedAngles.find((a) => resolvedAnglePhotos[a]?.base64);
 
     if (!primaryAngleKey) {
       return NextResponse.json({ error: "A reference photo is required." }, { status: 400 });
@@ -232,7 +308,7 @@ export async function POST(req: NextRequest) {
 
     // Single image only — generate for the primary angle (front if available)
     const angleResults: Partial<Record<Angle, string>> = {};
-    const result = await generateOneAngle(replicate, anglePhotos[primaryAngleKey]!, prompt);
+    const result = await generateOneAngle(replicate, resolvedAnglePhotos[primaryAngleKey]!, prompt);
     if (result) angleResults[primaryAngleKey] = result;
 
     if (Object.keys(angleResults).length === 0) {

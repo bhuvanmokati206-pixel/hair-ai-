@@ -1,0 +1,57 @@
+{
+  "feature_names": [
+    "aspect_ratio",
+    "edge_density",
+    "edge_std",
+    "laplacian_var",
+    "mean_hue",
+    "mean_saturation",
+    "mean_value",
+    "std_value",
+    "hair_face_contrast",
+    "gender_is_male"
+  ],
+  "models": {
+    "face_shape": {
+      "classes": [
+        "diamond",
+        "heart",
+        "oblong",
+        "oval",
+        "round",
+        "square"
+      ],
+      "model_file": "face_shape.cbm"
+    },
+    "hair_texture": {
+      "classes": [
+        "curly",
+        "straight",
+        "wavy"
+      ],
+      "model_file": "hair_texture.cbm"
+    },
+    "hair_density": {
+      "classes": [
+        "medium",
+        "thick",
+        "thin"
+      ],
+      "model_file": "hair_density.cbm"
+    },
+    "hair_length": {
+      "classes": [
+        "medium",
+        "short"
+      ],
+      "model_file": "hair_length.cbm"
+    },
+    "hairline_shape": {
+      "classes": [
+        "receding",
+        "rounded"
+      ],
+      "model_file": "hairline_shape.cbm"
+    }
+  }
+}
