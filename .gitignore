@@ -48,3 +48,5 @@ _rectest.*
 *.zip
 test-photo.*
 
+!.env.example
+
