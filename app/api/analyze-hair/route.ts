@@ -8,6 +8,7 @@ import { getPrompt, buildSpecialisedPrompt, toCategory, CLASSIFIER_PROMPT, type 
 import { preferencesToPromptBlock, type PreferenceAnswers } from "@/lib/preferences";
 import { logScanForTraining } from "@/lib/mlLogger";
 import { predictLocalML } from "@/lib/mlClient";
+import { fetchSafeRemoteImage } from "@/lib/remoteImage";
 
 // Vercel serverless: two Gemini vision calls + retries can run ~10–20s. Give it
 // headroom past the 10s default so a slow analysis isn't aborted mid-call.
@@ -203,7 +204,7 @@ export async function POST(req: NextRequest) {
       preferences,
       gender: genderHint,
     }: {
-      photos: { base64: string; mediaType: string; label: string }[];
+      photos: { base64?: string; url?: string; mediaType?: string; label: string }[];
       customerId?: string;
       promptVersion?: string; // "p1" | "p2" force a version; omit/"auto" for two-pass routing. See lib/analysisPrompts.ts
       preferences?: PreferenceAnswers; // customer questionnaire answers (lib/preferences.ts)
@@ -214,11 +215,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No photos provided" }, { status: 400 });
     }
 
+    // ── Resolve any direct storage URLs to in-memory buffers ──
+    const activePhotos = await Promise.all(
+      photos.map(async (p) => {
+        if (p.url && !p.base64) {
+          try {
+            const { buffer, contentType } = await fetchSafeRemoteImage(p.url);
+            return {
+              base64: buffer.toString("base64"),
+              mediaType: contentType || p.mediaType || "image/jpeg",
+              label: p.label,
+              url: p.url,
+            };
+          } catch (err) {
+            console.warn(`[analyze-hair] Failed to fetch photo from storage URL for ${p.label}:`, err);
+          }
+        }
+        return {
+          base64: p.base64 || "",
+          mediaType: p.mediaType || "image/jpeg",
+          label: p.label,
+          url: p.url,
+        };
+      })
+    );
+
     // ── Step 1: Local brightness quality check (free, instant, no API) ──
     const brightnessResults = await Promise.all(
-      photos.map(async (p) => ({
+      activePhotos.map(async (p) => ({
         label: p.label,
-        result: await checkBrightness(p.base64),
+        result: p.base64 ? await checkBrightness(p.base64) : "good",
       }))
     );
 
@@ -283,9 +309,9 @@ export async function POST(req: NextRequest) {
     // retake or an out-of-order upload would otherwise read a profile as the back,
     // or swap left/right. Fall back to the given order if labels are unrecognised.
     const GRID_ORDER = ["front", "left", "right", "back"];
-    const byLabel = new Map(photos.map((p) => [p.label, p]));
-    const orderedForGrid = GRID_ORDER.map((l) => byLabel.get(l)).filter((p): p is typeof photos[number] => !!p);
-    const grid = await buildPhotoGrid(orderedForGrid.length ? orderedForGrid : photos);
+    const byLabel = new Map(activePhotos.map((p) => [p.label, p]));
+    const orderedForGrid = GRID_ORDER.map((l) => byLabel.get(l)).filter((p): p is typeof activePhotos[number] => !!p);
+    const grid = await buildPhotoGrid(orderedForGrid.length ? orderedForGrid : activePhotos);
 
     // Pick the prompt.
     //  • Explicit "p1"/"p2" → MANUAL: run that exact version, one call. For testing.

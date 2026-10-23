@@ -26,6 +26,7 @@ import ReferenceResultCard, {
   type ReferenceAngles,
 } from "./ReferenceResultCard";
 import CustomerExploreTab from "./CustomerExploreTab";
+import { uploadPhotosDirectBatch } from "@/lib/directUpload";
 
 export type SuggestedColor = {
   color: string;
@@ -523,15 +524,32 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
       setAnalyzeError(null);
 
       try {
+        let photoPayload: Array<{ base64?: string; url?: string; mediaType?: string; label: string }> =
+          capturedPhotos.map((p) => ({
+            base64: p.base64,
+            mediaType: p.mediaType,
+            label: p.label,
+          }));
+
+        // Attempt direct storage upload to bypass Vercel 4.5MB request body limit with 100% full uncompressed quality
+        try {
+          const directUploads = await uploadPhotosDirectBatch(capturedPhotos, currentVisitId || undefined);
+          if (directUploads.length === capturedPhotos.length) {
+            photoPayload = directUploads.map((u) => ({
+              url: u.url,
+              label: u.label,
+              mediaType: "image/jpeg",
+            }));
+          }
+        } catch (uploadErr) {
+          console.warn("[runAnalysis] Direct storage upload fallback to base64:", uploadErr);
+        }
+
         const res = await fetch("/api/analyze-hair", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            photos: capturedPhotos.map((p) => ({
-              base64: p.base64,
-              mediaType: p.mediaType,
-              label: p.label,
-            })),
+            photos: photoPayload,
             preferences,
             gender: customerGender, // human-provided; overrides the model's guess
           }),
