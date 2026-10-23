@@ -95,7 +95,7 @@ create table if not exists visit_photos (
   kind          text not null check (kind in ('original','generated')),
   angle         text check (angle in ('front','left','right','back')),
   -- which edit this image belongs to, so hair and beard results stay separable
-  service_type  text check (service_type in ('haircut','beard')),
+  service_type  text check (service_type in ('haircut','beard','color')),
   style_name    text,
 
   storage_path  text not null,   -- e.g. 'visits/<visit_id>/generated-front.jpg'

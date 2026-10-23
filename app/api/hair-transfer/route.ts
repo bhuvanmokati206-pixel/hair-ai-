@@ -28,18 +28,54 @@ async function splitGrid(buffer: Buffer): Promise<string[]> {
   return quads; // [front, left, right, back]
 }
 
-const MULTI_ANGLE_PROMPT = [
-  "Image 1 is a photograph of a real customer. Image 2 is a reference hairstyle.",
-  "Transfer the hairstyle style, silhouette, texture, and fading technique from Image 2 onto the person in Image 1.",
-  "CRITICAL HAIR LENGTH INSTRUCTION: Respect the person's actual hair length from Image 1. Do NOT artificially lengthen or simulate instant hair growth if the reference image has longer hair. Adapt the cut, fade, texture, parting, and silhouette to the person's CURRENT actual hair length.",
-  "Preserve their exact identity: keep the same face, eyes, nose, mouth, eyebrows, jawline, cheeks, skin tone, facial hair, clothing, and lighting unchanged.",
-  "Output a 2×2 grid showing this SAME person with the adapted hairstyle from four views in this exact order:",
-  "TOP-LEFT = front view (face to camera, exact original face)",
-  "TOP-RIGHT = LEFT-side profile (head turned 90° so left ear faces camera)",
-  "BOTTOM-LEFT = RIGHT-side profile (head turned 90° so right ear faces camera)",
-  "BOTTOM-RIGHT = back of the head (180° back view)",
-  "All four panels show the exact same haircut on that one head. Real photographic hair with visible strands, natural matte finish, no plastic CGI sheen.",
-].join("\n\n");
+function buildTransferPrompt(options: {
+  styleName?: string;
+  customerEstimatedLength?: string;
+  referenceRequiredLength?: string;
+  isLengthSufficient?: boolean;
+  lengthDifferenceNotes?: string;
+  hairLength?: string;
+  hairMeasurements?: { topCm?: string; sideCm?: string; napeCm?: string };
+}): string {
+  const currentLengthStr =
+    options.customerEstimatedLength ||
+    (options.hairMeasurements?.topCm
+      ? `top: ${options.hairMeasurements.topCm}, sides: ${options.hairMeasurements.sideCm || "short"}, nape: ${options.hairMeasurements.napeCm || "short"}`
+      : options.hairLength) ||
+    "exact current length shown in Image 1";
+
+  const isShortOrNeedsGrowth =
+    options.isLengthSufficient === false ||
+    Boolean(options.lengthDifferenceNotes) ||
+    Boolean(options.customerEstimatedLength);
+
+  return [
+    "Image 1 is a photograph of a real customer. Image 2 is a reference hairstyle.",
+    `TASK: Adapt the haircut technique, texture, layer separation, parting, and side fade/taper from the reference hairstyle ("${options.styleName || "Reference Hairstyle"}") onto the person in Image 1.`,
+    "",
+    "CRITICAL HAIR LENGTH INSTRUCTION — STRICT PHYSICAL REALISM & HARD CEILING:",
+    `- CUSTOMER CURRENT HAIR LENGTH CAP: ${currentLengthStr}.`,
+    "- STRICT MAXIMUM LENGTH: Do NOT grow hair, do NOT add hair extensions, and do NOT simulate longer hair than the customer currently has in Image 1.",
+    "- If the reference photo (Image 2) features longer hair (such as longer flow, shoulder length, or longer bulk), you MUST execute an ADAPTED, SHORTER / CROPPED variation of this hairstyle that stays strictly WITHIN the customer's current hair perimeter.",
+    "- Hair length cannot extend past the customer's existing neck/ear boundary from Image 1. You may only CUT, TEXTURIZE, TAPER, FADE, and STYLE DOWN from their current length; NEVER lengthen.",
+    isShortOrNeedsGrowth
+      ? `- SPECIFIC LENGTH RESTRICTION: The customer's hair is shorter than the reference model's hair (${options.lengthDifferenceNotes || "maintain customer hair boundary"}). Do NOT copy the long silhouette of Image 2. Instead, scale the texture and cutting pattern into the customer's current short-to-medium length.`
+      : "",
+    "",
+    "FACE & IDENTITY PRESERVATION:",
+    "Preserve their exact identity: keep the same face, eyes, nose, mouth, eyebrows, jawline, cheeks, skin tone, facial hair, clothing, and lighting unchanged.",
+    "",
+    "OUTPUT FORMAT:",
+    "Output a 2×2 grid showing this SAME person with the adapted hairstyle from four views in this exact order:",
+    "TOP-LEFT = front view (face to camera, exact original face)",
+    "TOP-RIGHT = LEFT-side profile (head turned 90° so left ear faces camera)",
+    "BOTTOM-LEFT = RIGHT-side profile (head turned 90° so right ear faces camera)",
+    "BOTTOM-RIGHT = back of the head (180° back view)",
+    "All four panels show the exact same haircut on that one head. Real photographic hair with visible strands, natural matte finish, no plastic CGI sheen.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,6 +88,12 @@ export async function POST(req: NextRequest) {
       referenceBase64,
       referenceMediaType = "image/jpeg",
       styleName = "Reference Hairstyle",
+      customerEstimatedLength,
+      referenceRequiredLength,
+      isLengthSufficient,
+      lengthDifferenceNotes,
+      customerHairMeasurements,
+      hairLength,
     } = (await req.json()) as {
       targetBase64?: string;
       targetMediaType?: string;
@@ -61,6 +103,12 @@ export async function POST(req: NextRequest) {
       referenceBase64?: string;
       referenceMediaType?: string;
       styleName?: string;
+      customerEstimatedLength?: string;
+      referenceRequiredLength?: string;
+      isLengthSufficient?: boolean;
+      lengthDifferenceNotes?: string;
+      customerHairMeasurements?: { topCm?: string; sideCm?: string; napeCm?: string };
+      hairLength?: string;
     };
 
     let targetUri: string | null = null;
@@ -122,11 +170,21 @@ export async function POST(req: NextRequest) {
 
     const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
+    const prompt = buildTransferPrompt({
+      styleName,
+      customerEstimatedLength,
+      referenceRequiredLength,
+      isLengthSufficient,
+      lengthDifferenceNotes,
+      hairMeasurements: customerHairMeasurements,
+      hairLength,
+    });
+
     let output: { url: () => string };
     try {
       output = (await replicate.run(REPLICATE_MODEL, {
         input: {
-          prompt: MULTI_ANGLE_PROMPT,
+          prompt,
           image_input: [targetUri, referenceUri], // [person, reference]
           resolution: "2K",
         },

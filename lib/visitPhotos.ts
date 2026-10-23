@@ -13,7 +13,7 @@ export const VISIT_PHOTOS_BUCKET = "visit-photos";
 
 export type PhotoKind = "original" | "generated";
 export type PhotoAngle = "front" | "left" | "right" | "back";
-export type PhotoService = "haircut" | "beard";
+export type PhotoService = "haircut" | "beard" | "color";
 
 export type VisitPhotoInput = {
   /** Data URI ("data:image/jpeg;base64,…") or a bare base64 string. */
@@ -147,7 +147,7 @@ export async function saveVisitPhoto(
   const { data: signed } = await db.storage.from(VISIT_PHOTOS_BUCKET).createSignedUrl(storagePath, 60 * 60);
   const url = signed?.signedUrl ?? null;
 
-  const { data, error } = await db
+  let { data, error } = await db
     .from("visit_photos")
     .insert({
       visit_id:     visitId,
@@ -162,10 +162,32 @@ export async function saveVisitPhoto(
     .select("id, storage_path, url, kind, angle, is_hero")
     .single();
 
-  if (error) {
+  if (error && input.serviceType === "color") {
+    // If table has check constraint check (service_type in ('haircut','beard')), retry safely with service_type null and color: prefix
+    const retry = await db
+      .from("visit_photos")
+      .insert({
+        visit_id:     visitId,
+        kind:         input.kind,
+        angle:        input.angle ?? null,
+        service_type: null,
+        style_name:   input.styleName ? `color:${input.styleName}` : "color",
+        storage_path: storagePath,
+        url,
+        is_hero:      input.isHero ?? false,
+      })
+      .select("id, storage_path, url, kind, angle, is_hero")
+      .single();
+    if (!retry.error) {
+      data = retry.data;
+      error = null;
+    }
+  }
+
+  if (error || !data) {
     // Do not leave an orphaned object behind if the row insert fails.
     await db.storage.from(VISIT_PHOTOS_BUCKET).remove([storagePath]);
-    throw error;
+    throw error ?? new Error("Failed to insert photo record");
   }
 
   return {

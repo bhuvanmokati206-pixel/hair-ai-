@@ -45,12 +45,24 @@ export async function GET(req: NextRequest) {
 
     const generated = photos
       .filter((p) => p.kind === "generated" && p.url)
-      .map((p) => ({
-        styleName: p.style_name ?? visit.chosen_style ?? "style",
-        angle: (p.angle ?? "front") as "front" | "left" | "right" | "back",
-        serviceType: (p.service_type ?? "haircut") as "haircut" | "beard",
-        url: p.url as string,
-      }));
+      .map((p) => {
+        const isColor =
+          p.service_type === "color" ||
+          p.style_name?.startsWith("color:") ||
+          p.style_name?.toLowerCase().endsWith(" color");
+        const cleanStyleName = p.style_name?.startsWith("color:")
+          ? p.style_name.replace(/^color:\s*/, "")
+          : p.style_name?.toLowerCase().endsWith(" color")
+            ? p.style_name.replace(/\s+color$/i, "")
+            : (p.style_name ?? visit.chosen_style ?? "style");
+
+        return {
+          styleName: cleanStyleName,
+          angle: (p.angle ?? "front") as "front" | "left" | "right" | "back",
+          serviceType: (isColor ? "color" : (p.service_type ?? "haircut")) as "haircut" | "beard" | "color",
+          url: p.url as string,
+        };
+      });
 
     const customer = visit.customers as unknown as { id: string; name: string | null; phone: string } | null;
 

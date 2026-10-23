@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CameraCapture, { CapturedPhoto } from "./CameraCapture";
 import PreferencesStep from "./PreferencesStep";
@@ -32,6 +32,12 @@ export type SuggestedColor = {
   reason: string;
   process?: string;   // "single-process" | "needs bleaching" | "multi-step lift"
   sessions?: string;  // salon visits to achieve it, e.g. "1", "2", "2-3"
+  imageUrl?: string | null;
+  angles?: StyleAngles;
+  loading?: boolean;
+  error?: string | null;
+  whySuits?: string;
+  stylistInstructions?: string;
 };
 
 export type HairMeasurements = {
@@ -102,7 +108,7 @@ const BEARD_STYLES = ["Full Beard", "Stubble", "Goatee", "French Cut", "Circle B
 export type ResumeGeneratedImage = {
   styleName: string;
   angle: "front" | "left" | "right" | "back";
-  serviceType: "haircut" | "beard";
+  serviceType: "haircut" | "beard" | "color";
   url: string;
 };
 
@@ -237,6 +243,49 @@ function buildResumedStyles(resume: ResumeData): GeneratedStyle[] {
   });
 }
 
+function buildResumedColors(resume: ResumeData): SuggestedColor[] {
+  const suggested: SuggestedColor[] = resume.analysis?.suggestedColors ?? [];
+  const colorGenerated = resume.generated.filter((g) => g.serviceType === "color");
+
+  const byColor = new Map<string, ResumeGeneratedImage[]>();
+  for (const g of colorGenerated) {
+    const key = g.styleName.toLowerCase().replace(/\s+color$/, "").trim();
+    (byColor.get(key) ?? byColor.set(key, []).get(key)!).push(g);
+  }
+
+  const items: SuggestedColor[] = suggested.map((c) => {
+    const key = c.color.toLowerCase().replace(/\s+color$/, "").trim();
+    const imgs = byColor.get(key) ?? [];
+    const front = imgs.find((i) => i.angle === "front")?.url ?? imgs[0]?.url ?? null;
+    const angles = imgs.reduce<StyleAngles>((acc, i) => ({ ...acc, [i.angle]: i.url }), {});
+
+    return {
+      ...c,
+      imageUrl: front,
+      angles: Object.keys(angles).length ? angles : (front ? { front } : undefined),
+      loading: false,
+      error: null,
+    };
+  });
+
+  for (const [key, imgs] of byColor.entries()) {
+    if (!items.some((it) => it.color.toLowerCase().replace(/\s+color$/, "").trim() === key)) {
+      const front = imgs.find((i) => i.angle === "front")?.url ?? imgs[0]?.url ?? null;
+      const angles = imgs.reduce<StyleAngles>((acc, i) => ({ ...acc, [i.angle]: i.url }), {});
+      items.push({
+        color: imgs[0]?.styleName?.replace(/\s+color$/i, "") ?? key,
+        reason: "Saved colour preview",
+        imageUrl: front,
+        angles: Object.keys(angles).length ? angles : (front ? { front } : undefined),
+        loading: false,
+        error: null,
+      });
+    }
+  }
+
+  return items;
+}
+
 function buildAnglePhotos(photos: CapturedPhoto[]) {
   const anglePhotos: Record<string, { base64: string; mediaType: string; url?: string }> = {};
   for (const label of ["front", "left", "right", "back"]) {
@@ -284,8 +333,27 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
 
   // "Try this colour" preview state.
   const [colorBusy, setColorBusy] = useState<string | null>(null);
-  const [colorPreview, setColorPreview] = useState<{ color: string; url: string } | null>(null);
+  const [colorCards, setColorCards] = useState<SuggestedColor[]>(() =>
+    resumeData ? buildResumedColors(resumeData) : []
+  );
   const [colorError, setColorError] = useState<string | null>(null);
+
+  // Synchronize colorCards with resumeData or fresh analysis suggestedColors
+  useEffect(() => {
+    if (resumeData) {
+      setColorCards(buildResumedColors(resumeData));
+    } else if (analysis?.suggestedColors?.length) {
+      setColorCards((prev) => {
+        if (prev.length > 0) return prev;
+        return analysis.suggestedColors!.map((c) => ({
+          ...c,
+          imageUrl: null,
+          loading: false,
+          error: null,
+        }));
+      });
+    }
+  }, [resumeData, analysis?.suggestedColors]);
 
   // Combined service-selection look (cut + colour + beard picked on the services page).
   const [comboBusy, setComboBusy] = useState(false);
@@ -344,7 +412,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
         const analyzeData = await analyzeRes.json();
         const refAnalysis: ReferenceAnalysisData = analyzeData.analysis;
 
-        // 2. Transfer the hairstyle onto customer's face generating 4-angle views
+        // 2. Transfer the hairstyle onto customer's face generating 4-angle views with strict length capping
         const transferRes = await fetch("/api/hair-transfer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -355,7 +423,13 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
             targetMediaType: frontPhoto?.mediaType || "image/jpeg",
             referenceBase64: refPhoto.base64,
             referenceMediaType: refPhoto.mediaType,
-            styleName: refAnalysis.styleName,
+            styleName: refAnalysis?.styleName || "Reference Hairstyle",
+            customerEstimatedLength: refAnalysis?.customerEstimatedLength,
+            referenceRequiredLength: refAnalysis?.referenceRequiredLength,
+            isLengthSufficient: refAnalysis?.isLengthSufficient,
+            lengthDifferenceNotes: refAnalysis?.lengthDifferenceNotes,
+            customerHairMeasurements: analysis?.hairMeasurements,
+            hairLength: analysis?.hairLength,
           }),
         });
         const transferData = await transferRes.json();
@@ -483,6 +557,16 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
             gifLoading: false,
           }))
         );
+        if (result.suggestedColors?.length) {
+          setColorCards(
+            result.suggestedColors.map((c) => ({
+              ...c,
+              imageUrl: null,
+              loading: false,
+              error: null,
+            }))
+          );
+        }
         // Go to the service-selection page first (gender is now known from analysis).
         setStep("services");
         onAnalysisComplete?.(result, capturedPhotos);
@@ -534,8 +618,10 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
             hairLength: analysis.hairLength,
             hairMeasurements: analysis.hairMeasurements,
             angle: angleKey,
-            photoBase64: anglePhoto.base64,
-            photoMediaType: anglePhoto.mediaType,
+            photoBase64: anglePhoto.base64 || (anglePhoto.preview?.startsWith("data:") ? anglePhoto.preview.split(",")[1] : undefined),
+            photoMediaType: anglePhoto.mediaType || "image/jpeg",
+            photoUrl: anglePhoto.preview?.startsWith("http") ? anglePhoto.preview : undefined,
+            visitId: currentVisitId,
           }),
         });
         const data = await res.json();
@@ -559,7 +645,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
         );
       }
     },
-    [analysis, photos]
+    [analysis, photos, currentVisitId]
   );
 
   // Generates the requested angles TWO at a time. nano-banana-2 handles a pair of
@@ -593,19 +679,9 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
         prev.map((s, i) => (i === index ? { ...s, loading: true, error: null } : s))
       );
 
-      // Build angle photo map from all captured photos for the v2 pipeline.
-      // v2 processes each angle independently (segment → inpaint → face-lock),
-      // so we pass every photo we have and let the route handle whichever angles exist.
-      const anglePhotos: Record<string, { base64: string; mediaType: string }> = {};
-      for (const label of ["front", "left", "right", "back"]) {
-        const p = photos.find((ph) => ph.label === label);
-        if (p) anglePhotos[label] = { base64: p.base64, mediaType: p.mediaType };
-      }
-      // Fallback: if photos have no labels, treat the first one as front.
-      if (Object.keys(anglePhotos).length === 0 && photos[0]) {
-        anglePhotos.front = { base64: photos[0].base64, mediaType: photos[0].mediaType };
-      }
-      if (Object.keys(anglePhotos).length === 0) return;
+      // Build angle photo map from all captured photos (supporting base64 and Supabase Storage URLs)
+      const anglePhotos = buildAnglePhotos(photos);
+      if (Object.keys(anglePhotos).length === 0 && !currentVisitId) return;
 
       try {
         const res = await fetch("/api/generate-hairstyle", {
@@ -622,6 +698,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
             hairlineShape: analysis.hairlineShape,
             hairlineNotes: analysis.hairlineNotes,
             photos: anglePhotos,
+            visitId: currentVisitId,
             // 2×2 grid for hair: one native-4K call returns all four angles (front,
             // both sides, back) in one collage, split server-side into four images.
             gridMode: kind === "hair",
@@ -688,39 +765,122 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
   const generateBeardImage = useCallback((index: number) => generateForTab("beard", index), [generateForTab]);
 
   // "Try this colour" — recolours the customer's CURRENT cut to a suggested shade
-  // (keeps the haircut, only changes colour). One generation call.
-  const tryColor = useCallback(async (color: string) => {
-    if (!analysis || colorBusy) return;
-    const anglePhotos: Record<string, { base64: string; mediaType: string }> = {};
-    for (const label of ["front", "left", "right", "back"]) {
-      const p = photos.find((ph) => ph.label === label);
-      if (p) anglePhotos[label] = { base64: p.base64, mediaType: p.mediaType };
-    }
-    if (Object.keys(anglePhotos).length === 0 && photos[0]) {
-      anglePhotos.front = { base64: photos[0].base64, mediaType: photos[0].mediaType };
-    }
-    if (Object.keys(anglePhotos).length === 0) return;
-    if (!deductCredits(1)) { setCreditModalOpen(true); return; }
+  // (keeps the haircut, only changes colour). One generation call renders 4 angles.
+  const tryColor = useCallback(
+    async (color: string) => {
+      if (!analysis || colorBusy) return;
+      const anglePhotos = buildAnglePhotos(photos);
+      if (Object.keys(anglePhotos).length === 0 && !currentVisitId) return;
+      if (!deductCredits(1)) {
+        setCreditModalOpen(true);
+        return;
+      }
 
-    setColorBusy(color); setColorError(null);
-    try {
-      const res = await fetch("/api/generate-hairstyle", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recolorTo: color, editTarget: "hair", gender: analysis.gender,
-          photos: anglePhotos, gridMode: true,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Colour preview failed");
-      setColorPreview({ color, url: data.imageUrl });
-    } catch (err) {
-      addCredits(1);
-      setColorError(err instanceof Error ? err.message : "Colour preview failed");
-    } finally {
-      setColorBusy(null);
-    }
-  }, [analysis, photos, colorBusy]);
+      setColorBusy(color);
+      setColorError(null);
+      setColorCards((prev) =>
+        prev.map((c) =>
+          c.color.toLowerCase() === color.toLowerCase()
+            ? { ...c, loading: true, error: null }
+            : c
+        )
+      );
+
+      try {
+        const res = await fetch("/api/generate-hairstyle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recolorTo: color,
+            editTarget: "hair",
+            gender: analysis.gender,
+            photos: anglePhotos,
+            gridMode: true,
+            visitId: currentVisitId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Colour preview failed");
+
+        const frontImg = data.imageUrl;
+        const allAngles: StyleAngles = { front: frontImg, ...(data.angles ?? {}) };
+
+        setColorCards((prev) =>
+          prev.map((c) =>
+            c.color.toLowerCase() === color.toLowerCase()
+              ? {
+                  ...c,
+                  loading: false,
+                  imageUrl: frontImg,
+                  angles: allAngles,
+                  whySuits: data.whySuits,
+                  stylistInstructions: data.barberInstructions,
+                }
+              : c
+          )
+        );
+
+        // ── Persist all 4 angles into Supabase visit_photos so they reload on resume
+        if (currentVisitId && frontImg) {
+          const photosToSave: {
+            image: string;
+            kind: "generated";
+            angle: "front" | "left" | "right" | "back";
+            serviceType: "color";
+            styleName: string;
+            isHero: boolean;
+          }[] = [];
+
+          if (data.angles) {
+            (["front", "left", "right", "back"] as const).forEach((ang) => {
+              if (data.angles[ang]) {
+                photosToSave.push({
+                  image: data.angles[ang],
+                  kind: "generated",
+                  angle: ang,
+                  serviceType: "color",
+                  styleName: color,
+                  isHero: false,
+                });
+              }
+            });
+          } else {
+            photosToSave.push({
+              image: frontImg,
+              kind: "generated",
+              angle: "front",
+              serviceType: "color",
+              styleName: color,
+              isHero: false,
+            });
+          }
+
+          void fetch("/api/visit-photos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              visitId: currentVisitId,
+              photos: photosToSave,
+            }),
+          }).catch((err) => console.warn("[tryColor] photo upload failed:", err));
+        }
+      } catch (err) {
+        addCredits(1);
+        const errMsg = err instanceof Error ? err.message : "Colour preview failed";
+        setColorError(errMsg);
+        setColorCards((prev) =>
+          prev.map((c) =>
+            c.color.toLowerCase() === color.toLowerCase()
+              ? { ...c, loading: false, error: errMsg }
+              : c
+          )
+        );
+      } finally {
+        setColorBusy(null);
+      }
+    },
+    [analysis, photos, colorBusy, currentVisitId]
+  );
 
   // The actual generation. `chosenStyle` is the hairstyle the customer picked on
   // the style-picker step — when absent (no haircut, or beard/colour only) it is
@@ -733,15 +893,8 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
     const needsImage = pick.hair || pick.beard || pick.colour;
     if (!needsImage) { setComboAngles(null); setStep("dashboard"); return; }
 
-    const anglePhotos: Record<string, { base64: string; mediaType: string }> = {};
-    for (const label of ["front", "left", "right", "back"]) {
-      const p = photos.find((ph) => ph.label === label);
-      if (p) anglePhotos[label] = { base64: p.base64, mediaType: p.mediaType };
-    }
-    if (Object.keys(anglePhotos).length === 0 && photos[0]) {
-      anglePhotos.front = { base64: photos[0].base64, mediaType: photos[0].mediaType };
-    }
-    if (Object.keys(anglePhotos).length === 0) return;
+    const anglePhotos = buildAnglePhotos(photos);
+    if (Object.keys(anglePhotos).length === 0 && !currentVisitId) return;
     if (!deductCredits(1)) { setCreditModalOpen(true); return; }
 
     setComboBusy(true); setComboError(null);
@@ -750,6 +903,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           editTarget: "hair", gender: analysis.gender, gridMode: true, photos: anglePhotos,
+          visitId: currentVisitId,
           styleName: styleForCut,
           hairColor: analysis.hairColor, hairTexture: analysis.hairTexture, hairLength: analysis.hairLength,
           useReference: true,
@@ -770,7 +924,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
     } finally {
       setComboBusy(false);
     }
-  }, [analysis, photos]);
+  }, [analysis, photos, currentVisitId]);
 
   // From the service-selection page. If a haircut was picked, let the customer
   // choose WHICH style first (so every pick is a genuinely different look, not
@@ -992,8 +1146,40 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
           </p>
         </div>
 
+        {/* Captured scan preview strip */}
+        {photos.length > 0 && (
+          <div className="max-w-sm mx-auto w-full my-3 px-1">
+            <div className="flex items-center justify-between mb-2">
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 9, letterSpacing: ".2em", textTransform: "uppercase", color: "#8FA79A" }}>
+                ✓ {photos.length} Biometric Photos Captured
+              </span>
+              <button onClick={() => setStep("capture")} className="text-[10px] text-[#8FA79A] hover:underline">
+                Retake
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {photos.map((p, idx) => {
+                const src = p.preview || (p.base64 ? `data:${p.mediaType || "image/jpeg"};base64,${p.base64}` : "");
+                return (
+                  <div key={p.label || idx} className="rounded-xl overflow-hidden aspect-[3/4] border border-white/10 bg-white/5 relative">
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt={p.label} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-white/40">✓</div>
+                    )}
+                    <span className="absolute bottom-1 left-1 right-1 text-[8px] uppercase tracking-wider text-center bg-black/70 rounded py-0.5 text-white/90">
+                      {p.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* The 2 Choice Cards */}
-        <div className="space-y-3 max-w-sm mx-auto w-full my-auto py-6">
+        <div className="space-y-3 max-w-sm mx-auto w-full my-auto py-4">
           {/* Choice 1: Reference Photo */}
           <button
             onClick={() => setRefModalOpen(true)}
@@ -1183,34 +1369,7 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
     <div className="min-h-screen" style={{ background: "var(--bg)", paddingBottom: 96 }}>
       <CreditModal open={creditModalOpen} onClose={() => setCreditModalOpen(false)} />
 
-      {/* Colour preview modal */}
-      <AnimatePresence>
-        {colorPreview && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-5"
-            style={{ background: "rgba(0,0,0,0.75)" }}
-            onClick={() => setColorPreview(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-sm rounded-2xl overflow-hidden"
-              style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={colorPreview.url} alt={colorPreview.color} className="w-full" />
-              <div className="p-4">
-                <p className="font-bold text-sm capitalize" style={{ color: "var(--text-primary)" }}>🎨 {colorPreview.color}</p>
-                <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>
-                  AI preview — the real salon result depends on the customer&apos;s hair condition and may need bleaching.
-                </p>
-                <button onClick={() => setColorPreview(null)} className="btn-primary w-full mt-3">Close</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* HOME — photos carousel + name + hair details + best style */}
       {dashTab === "home" && (
@@ -1317,9 +1476,11 @@ export default function HairAIAutomation({ customerName, onAnalysisComplete, onR
                   />
                 ) : activePreviewTab === "color" ? (
                   <ColorSection
-                    colors={analysis.suggestedColors ?? []}
+                    colors={colorCards.length > 0 ? colorCards : (analysis.suggestedColors ?? [])}
                     onTryColor={tryColor}
                     busyColor={colorBusy}
+                    noCredits={noCredits}
+                    onBuyCredits={() => setCreditModalOpen(true)}
                   />
                 ) : (
                   <StyleGrid

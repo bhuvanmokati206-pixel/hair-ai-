@@ -123,9 +123,9 @@ export function CoverflowCarousel({
         `translateZ(${-depth * width * ramp}px) rotateY(${-tilt}deg)`;
 
       // A card is teleported across the ring at exactly half a turn out, so it
-      // has to be gone by then or the jump is visible.
-      const edge = loop ? Math.min(1, Math.max(0, count / 2 - distance)) : 1;
-      card.style.opacity = String(Math.max(0, 1 - fade * distance) * edge);
+      // has to be gone by then or the jump is visible. For smaller counts (<= 4), keep visible.
+      const edge = loop && count > 4 ? Math.min(1, Math.max(0, count / 2 - distance)) : 1;
+      card.style.opacity = String(Math.max(0.2, 1 - fade * distance) * edge);
       card.style.zIndex = String(100 - Math.round(distance));
     });
   }, [count, depth, fade, falloff, gap, loop, rotate]);
@@ -228,16 +228,26 @@ export function CoverflowCarousel({
 
     const measure = () => {
       const card = cardRefs.current[0];
-      if (!card) return;
-      widthRef.current = card.offsetWidth;
-      paint();
+      const w = card?.offsetWidth;
+      if (w && w > 0) {
+        widthRef.current = w;
+        paint();
+      } else {
+        requestAnimationFrame(() => {
+          const retryCard = cardRefs.current[0];
+          if (retryCard && retryCard.offsetWidth > 0) {
+            widthRef.current = retryCard.offsetWidth;
+            paint();
+          }
+        });
+      }
     };
 
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(frame);
     return () => observer.disconnect();
-  }, [paint]);
+  }, [paint, count, slides]);
 
   React.useEffect(
     () => () => {
@@ -301,7 +311,7 @@ export function CoverflowCarousel({
                   "absolute left-1/2 top-0 aspect-square overflow-hidden rounded-2xl bg-muted shadow-xl will-change-transform",
                   cardClassName,
                 )}
-                style={{ width: "var(--cf-card)" }}
+                style={{ width: "var(--cf-card)", transform: "translateX(-50%)" }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

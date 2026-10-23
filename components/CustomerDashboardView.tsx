@@ -136,7 +136,7 @@ export default function CustomerDashboardView({
           <div style={{ marginTop: 6 }}>
             <CoverflowCarousel
               slides={scanSlides}
-              loop={scanSlides.length > 2}
+              loop={false}
               cardWidth="clamp(150px, 44vw, 230px)"
               onSelect={setScanActive}
               label="Your scan angles"
@@ -186,16 +186,64 @@ export default function CustomerDashboardView({
               </div>
             )}
 
-            {/* Original scan thumbnails — shown alongside the generated preview */}
-            {hasLook && scanSlides.length > 0 && (
+            {/* Original scan photos gallery — always shown so the user sees their actual photos */}
+            {scanSlides.length > 0 && (
               <div>
-                <div style={{ ...MICRO, marginBottom: 10, paddingLeft: 2 }}>Your scan</div>
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-                  {photos.map((p) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={p.label} src={p.preview} alt={ANGLE_LABEL[p.label] ?? p.label}
-                      style={{ width: 68, height: 90, flex: "none", objectFit: "cover", borderRadius: 12, border: "1px solid rgba(242,239,233,.1)" }} />
-                  ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, paddingLeft: 2 }}>
+                  <div style={MICRO}>Your 4-angle scan photos</div>
+                  <div style={{ ...MICRO, color: ACC }}>{scanSlides.length} angles captured</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                  {photos.map((p, idx) => {
+                    const src = p.preview || (p.base64 ? `data:${p.mediaType || "image/jpeg"};base64,${p.base64}` : "");
+                    return (
+                      <div
+                        key={p.label || idx}
+                        onClick={() => setScanActive(idx)}
+                        style={{
+                          borderRadius: 14,
+                          overflow: "hidden",
+                          border: scanActive === idx ? `2px solid ${ACC}` : "1px solid rgba(242,239,233,.12)",
+                          background: "rgba(23,22,20,.8)",
+                          cursor: "pointer",
+                          transition: "all .2s ease",
+                        }}
+                      >
+                        <div style={{ aspectRatio: "3/4", width: "100%", position: "relative" }}>
+                          {src ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={src}
+                              alt={ANGLE_LABEL[p.label] ?? p.label}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: MUTE }}>
+                              No photo
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              position: "absolute",
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              padding: "4px 2px",
+                              background: "rgba(12,11,10,0.75)",
+                              textAlign: "center",
+                              fontSize: 9,
+                              fontWeight: 600,
+                              letterSpacing: ".1em",
+                              textTransform: "uppercase",
+                              color: scanActive === idx ? "#F2EFE9" : MUTE,
+                            }}
+                          >
+                            {ANGLE_LABEL[p.label] ?? p.label}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
       combo?: { hair?: boolean; colorName?: string; beardStyle?: string };
     };
 
-    if (!styleName && !customDescription) {
+    if (!styleName && !customDescription && !recolorTo && !combo) {
       return NextResponse.json({ error: "Missing style name" }, { status: 400 });
     }
 
@@ -273,7 +273,7 @@ export async function POST(req: NextRequest) {
 
     // Use the style name directly — Groq expansion rewrites descriptions in ways
     // that confuse the image model and cause face drift. Raw name is precise enough.
-    const rawName = customDescription ?? styleName!;
+    const rawName = customDescription ?? styleName ?? (recolorTo ? `${recolorTo} hair colour` : "hair colour");
     const [, notes] = await Promise.all([
       Promise.resolve(rawName), // no-op slot to keep destructuring
       buildStyleNotes(

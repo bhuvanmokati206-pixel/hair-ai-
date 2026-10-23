@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { downloadImage, imageFilename } from "@/lib/download";
 
 export interface ReferenceAnalysisData {
   styleName: string;
@@ -56,6 +57,13 @@ export default function ReferenceResultCard({
   onTryAnotherReference,
 }: ReferenceResultCardProps) {
   const [activeAngle, setActiveAngle] = useState<keyof ReferenceAngles>("front");
+  const [zoomedPhoto, setZoomedPhoto] = useState<{
+    url: string;
+    title: string;
+    subtitle?: string;
+    type: "reference" | "generated";
+  } | null>(null);
+  const [zoomScale, setZoomScale] = useState<number>(1);
 
   const currentGeneratedImage = angles?.[activeAngle] || generatedPhotoUrl;
   const hasMultipleAngles = Boolean(angles?.left && angles?.right);
@@ -64,6 +72,28 @@ export default function ReferenceResultCard({
     analysis.isSuitable === false ||
     analysis.isLengthSufficient === false ||
     Boolean(analysis.advisoryWarning);
+
+  const openGeneratedZoom = (angleKey: keyof ReferenceAngles = activeAngle) => {
+    const angleTab = ANGLE_TABS.find((t) => t.id === angleKey);
+    const imgUrl = angles?.[angleKey] || generatedPhotoUrl;
+    setZoomedPhoto({
+      url: imgUrl,
+      title: "Your Adapted Hairstyle",
+      subtitle: `${analysis.styleName} · ${angleTab?.label ?? "Front"} View (${angleTab?.deg ?? "0°"})`,
+      type: "generated",
+    });
+    setZoomScale(1);
+  };
+
+  const openReferenceZoom = () => {
+    setZoomedPhoto({
+      url: referencePhotoUrl,
+      title: "Reference Inspiration",
+      subtitle: analysis.styleName,
+      type: "reference",
+    });
+    setZoomScale(1);
+  };
 
   return (
     <div className="space-y-4 max-w-md mx-auto">
@@ -149,14 +179,22 @@ export default function ReferenceResultCard({
         <div className="flex items-center justify-between gap-2.5">
           {/* Reference Inspo Photo */}
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black/60 shadow relative">
+            <button
+              type="button"
+              onClick={openReferenceZoom}
+              className="w-full aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black/60 shadow relative group cursor-zoom-in active:scale-[0.98] transition-all text-left"
+              title="Click to zoom in"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={referencePhotoUrl}
                 alt="Reference Inspo"
-                className="w-full h-full object-cover object-top"
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
               />
-            </div>
+              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-sm text-[8px] font-bold text-white/90 flex items-center gap-1 shadow border border-white/10">
+                🔍 Zoom
+              </span>
+            </button>
             <span className="mt-1.5 px-2 py-0.5 rounded-full bg-white/10 text-[9px] font-bold text-white/70 uppercase tracking-wider">
               Reference Inspo
             </span>
@@ -169,7 +207,12 @@ export default function ReferenceResultCard({
 
           {/* Generated Look on Customer Face */}
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full aspect-[4/5] rounded-xl overflow-hidden border-2 border-[#8FA79A] bg-black/60 shadow-lg relative">
+            <button
+              type="button"
+              onClick={() => openGeneratedZoom(activeAngle)}
+              className="w-full aspect-[4/5] rounded-xl overflow-hidden border-2 border-[#8FA79A] bg-black/60 shadow-lg relative group cursor-zoom-in active:scale-[0.98] transition-all text-left"
+              title="Click to zoom in"
+            >
               <AnimatePresence mode="wait">
                 <motion.img
                   key={activeAngle}
@@ -179,10 +222,13 @@ export default function ReferenceResultCard({
                   transition={{ duration: 0.15 }}
                   src={currentGeneratedImage}
                   alt={`Your Generated Look - ${activeAngle}`}
-                  className="w-full h-full object-cover object-top"
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                 />
               </AnimatePresence>
-            </div>
+              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-[#8FA79A] text-black text-[8px] font-black flex items-center gap-1 shadow">
+                🔍 Zoom
+              </span>
+            </button>
             <span className="mt-1.5 px-2 py-0.5 rounded-full bg-[#8FA79A] text-[9px] font-black text-black uppercase tracking-wider shadow">
               Your Face ({activeAngle.toUpperCase()})
             </span>
@@ -280,6 +326,175 @@ export default function ReferenceResultCard({
           🔄 Try a different reference photo
         </button>
       </div>
+
+      {/* Interactive Fullscreen Lightbox Zoom Modal */}
+      <AnimatePresence>
+        {zoomedPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-md"
+            onClick={() => setZoomedPhoto(null)}
+          >
+            {/* Top Toolbar */}
+            <div
+              className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/10 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="min-w-0 pr-2">
+                <h3 className="text-sm font-bold text-white truncate">{zoomedPhoto.title}</h3>
+                {zoomedPhoto.subtitle && (
+                  <p className="text-[11px] text-[#8FA79A] truncate">{zoomedPhoto.subtitle}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {/* 1x / 2x toggle */}
+                <button
+                  type="button"
+                  onClick={() => setZoomScale((s) => (s === 1 ? 1.75 : 1))}
+                  className="h-8 px-2.5 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors flex items-center gap-1"
+                >
+                  <span>{zoomScale > 1 ? "🔍 1x" : "🔍 2x"}</span>
+                </button>
+
+                {/* Save image */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadImage(
+                      zoomedPhoto.url,
+                      imageFilename(
+                        analysis.styleName,
+                        zoomedPhoto.type === "generated" ? activeAngle : "reference"
+                      )
+                    )
+                  }
+                  className="h-8 px-3 rounded-lg bg-[#8FA79A] text-black text-xs font-bold hover:bg-[#8FA79A]/90 transition-colors flex items-center gap-1.5 shadow"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                    <path
+                      d="M12 3V15M12 15L8 11M12 15L16 11"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M4 17V19C4 20.1 4.9 21 6 21H18C19.1 21 20 20.1 20 19V17"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span>Save</span>
+                </button>
+
+                {/* Close */}
+                <button
+                  type="button"
+                  onClick={() => setZoomedPhoto(null)}
+                  className="w-8 h-8 rounded-lg bg-white/10 text-white/80 hover:text-white hover:bg-white/20 flex items-center justify-center transition-colors text-base"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Main Interactive Zoom View Area */}
+            <div
+              className="flex-1 flex items-center justify-center p-3 overflow-hidden relative"
+              onClick={(e) => {
+                e.stopPropagation();
+                setZoomScale((s) => (s === 1 ? 1.75 : 1));
+              }}
+            >
+              <div
+                className="max-w-full max-h-[72vh] rounded-2xl overflow-hidden transition-transform duration-200"
+                style={{
+                  transform: `scale(${zoomScale})`,
+                  cursor: zoomScale > 1 ? "zoom-out" : "zoom-in",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={zoomedPhoto.url}
+                  alt={zoomedPhoto.title}
+                  className="w-full h-full object-contain max-h-[72vh] select-none"
+                  draggable={false}
+                />
+              </div>
+            </div>
+
+            {/* Bottom Controls Bar */}
+            <div
+              className="p-3 bg-black/80 border-t border-white/10 space-y-2 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Switch between Generated vs Reference photo */}
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openGeneratedZoom(activeAngle)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    zoomedPhoto.type === "generated"
+                      ? "bg-[#8FA79A] text-black shadow"
+                      : "bg-white/10 text-white/70 hover:text-white"
+                  }`}
+                >
+                  ✦ Your Face ({activeAngle.toUpperCase()})
+                </button>
+                <button
+                  type="button"
+                  onClick={openReferenceZoom}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    zoomedPhoto.type === "reference"
+                      ? "bg-[#8FA79A] text-black shadow"
+                      : "bg-white/10 text-white/70 hover:text-white"
+                  }`}
+                >
+                  📷 Reference Inspo
+                </button>
+              </div>
+
+              {/* Angle tabs inside zoom when viewing generated face */}
+              {zoomedPhoto.type === "generated" && hasMultipleAngles && (
+                <div className="grid grid-cols-4 gap-1.5 max-w-sm mx-auto pt-1">
+                  {ANGLE_TABS.map((tab) => {
+                    const isTabActive = activeAngle === tab.id;
+                    const available = Boolean(angles?.[tab.id]);
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        disabled={!available}
+                        onClick={() => {
+                          setActiveAngle(tab.id);
+                          openGeneratedZoom(tab.id);
+                        }}
+                        className={`py-1.5 px-2 rounded-lg text-center transition-all ${
+                          isTabActive
+                            ? "bg-[#8FA79A] text-black font-black shadow"
+                            : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10"
+                        } ${!available ? "opacity-30 cursor-not-allowed" : ""}`}
+                      >
+                        <span className="block text-[10px] font-bold uppercase">{tab.label}</span>
+                        <span className="block text-[8px] opacity-75">{tab.deg}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className="text-center text-[10px] text-white/40">
+                Tap photo to toggle zoom ({zoomScale}x) · Tap ✕ or outside to exit
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -56,6 +56,7 @@ function ScanFlow() {
             phone: body.customer.phone,
           });
         }
+        setCurrentVisitId(resumeId);
         setResumeData({
           analysis: body.visit.analysis as HairAnalysis,
           generated: body.generated ?? [],
@@ -140,6 +141,16 @@ function ScanFlow() {
         if (photoRes.ok) {
           const photoData = await photoRes.json();
           console.log("[scan] Photos saved to database:", photoData);
+          if (Array.isArray(photoData.photos) && photoData.photos.length > 0) {
+            const updatedPhotos = photos.map((p) => {
+              const matched = photoData.photos.find((sp: { angle: string | null; url: string | null }) => sp.angle === p.label);
+              return {
+                ...p,
+                preview: matched?.url || p.preview,
+              };
+            });
+            updateSessionAnalysis(analysis, updatedPhotos);
+          }
         }
       } catch (err) {
         console.warn("[scan] original photo upload failed:", err);
